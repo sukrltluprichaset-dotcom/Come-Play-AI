@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Come Play AI - User Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(203, 213, 225, 0.5); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-pop-up { animation: popUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes popUp { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .payment-radio:checked + div { border-color: #4f46e5; background-color: #eef2ff; }
+        .payment-radio:checked + div .check-icon { opacity: 1; transform: scale(1); }
+        .star-rating i { cursor: pointer; transition: color 0.2s, transform 0.1s; color: #cbd5e1; }
+        .star-rating i:hover { transform: scale(1.1); }
+        .star-rating i.active { color: #f59e0b; }
+        .emotion-btn { transition: all 0.2s; border: 2px solid transparent; }
+        .emotion-btn:hover { transform: scale(1.05); }
+        .toggle-checkbox:checked { right: 0; border-color: #4f46e5; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
+        body.dark-theme main { background-color: #0f172a !important; }
+        body.dark-theme .bg-slate-50 { background-color: #0f172a !important; }
+        body.dark-theme .bg-white { background-color: #1e293b !important; color: #f8fafc !important; border-color: #334155 !important; }
+        body.dark-theme .text-slate-800, body.dark-theme .text-slate-700 { color: #f1f5f9 !important; }
+        body.dark-theme .text-slate-500, body.dark-theme .text-slate-600 { color: #94a3b8 !important; }
+        body.dark-theme .border-slate-200, body.dark-theme .border-slate-300, body.dark-theme .border-slate-100 { border-color: #334155 !important; }
+        body.dark-theme input:not([type="radio"]):not([type="checkbox"]), body.dark-theme textarea { background-color: #0f172a !important; color: #f8fafc !important; border-color: #334155 !important; }
+        body.dark-theme .bg-slate-100 { background-color: #334155 !important; }
+        body.dark-theme .hover\:bg-slate-50:hover { background-color: #334155 !important; }
+        body.dark-theme .hover\:bg-slate-100:hover { background-color: #475569 !important; }
+        body.dark-theme th { color: #cbd5e1 !important; }
+        body.dark-theme td { color: #f8fafc !important; }
+        body.dark-theme .bg-slate-100\/50 { background-color: #1e293b !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
+
+    <div id="auth-layout" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 relative z-50">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+            <div class="absolute top-1/2 -right-24 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style="animation-delay: 2s;"></div>
+            <div class="absolute -bottom-24 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style="animation-delay: 4s;"></div>
+        </div>
+
+        <div id="login-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-pop-up border border-white/20">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-indigo-600 rounded-full mx-auto flex items-center justify-center text-white text-3xl mb-4 shadow-lg shadow-indigo-600/30"><i class="fa-solid fa-robot"></i></div>
+                <h1 class="text-2xl font-bold text-slate-800">Come Play AI</h1>
+                <p class="text-slate-500 text-sm mt-1">ยินดีต้อนรับกลับมา! กรุณาเข้าสู่ระบบ</p>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">ชื่อผู้ใช้งาน หรือ อีเมล</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-user text-slate-400"></i></div>
+                        <input type="text" id="login-email" required placeholder="Username / Email" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">รหัสผ่าน</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-lock text-slate-400"></i></div>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                    <div class="text-right mt-1"><button type="button" onclick="showForgotPassword()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">ลืมรหัสผ่าน?</button></div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5">เข้าสู่ระบบ</button>
+            </form>
+            <div class="mt-8 text-center text-sm text-slate-500">ยังไม่มีบัญชีผู้ใช้งาน? <button onclick="showRegister()" class="text-indigo-600 hover:text-indigo-800 font-bold ml-1 transition">สมัครสมาชิกเลย</button></div>
+        </div>
+
+        <div id="register-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 hidden animate-pop-up border border-white/20">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-4 shadow-lg"><i class="fa-solid fa-user-plus"></i></div>
+                <h1 class="text-2xl font-bold text-slate-800">สร้างบัญชีใหม่</h1>
+                <p class="text-slate-500 text-sm mt-1">เริ่มต้นการพูดคุยกับเพื่อนเสมือนของคุณ</p>
+            </div>
+            <form onsubmit="handleRegister(event)" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">ชื่อผู้ใช้งาน</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-user text-slate-400"></i></div>
+                        <input type="text" id="register-username" required placeholder="Username" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">อีเมล</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-envelope text-slate-400"></i></div>
+                        <input type="email" id="register-email" required placeholder="you@example.com" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">รหัสผ่าน</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-lock text-slate-400"></i></div>
+                        <input type="password" id="register-password" required placeholder="อย่างน้อย 8 ตัวอักษร" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5">สมัครสมาชิก</button>
+            </form>
+            <div class="mt-6 text-center text-sm text-slate-500">มีบัญชีอยู่แล้ว? <button onclick="showLogin()" class="text-indigo-600 hover:text-indigo-800 font-bold ml-1 transition">เข้าสู่ระบบ</button></div>
+        </div>
+
+        <div id="forgot-password-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 hidden animate-pop-up border border-white/20">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-4 shadow-lg"><i class="fa-solid fa-key"></i></div>
+                <h1 class="text-2xl font-bold text-slate-800">ลืมรหัสผ่าน?</h1>
+                <p class="text-slate-500 text-sm mt-1">กรุณากรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน</p>
+            </div>
+            <form onsubmit="handleForgotPassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">อีเมล <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-envelope text-slate-400"></i></div>
+                        <input type="email" required placeholder="your@email.com" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-3.5 rounded-xl shadow-lg mt-4 transition transform hover:-translate-y-0.5">ส่งลิงก์รีเซ็ตรหัสผ่าน</button>
+            </form>
+            <div class="mt-6 text-center text-sm text-slate-500">นึกรหัสผ่านออกแล้ว? <button onclick="showLogin()" class="text-indigo-600 hover:text-indigo-800 font-bold ml-1 transition">กลับไปหน้าเข้าสู่ระบบ</button></div>
+        </div>
+    </div>
+
+    <div id="app-layout" class="h-full w-full flex hidden">
+        <aside class="w-64 bg-indigo-900 text-white flex flex-col justify-between shadow-xl z-20 shrink-0">
+            <div class="flex-1 flex flex-col h-full overflow-hidden">
+                <div class="p-6 text-center border-b border-indigo-800">
+                    <div class="w-16 h-16 bg-white rounded-full mx-auto mb-3 flex items-center justify-center text-indigo-900 text-2xl shadow-lg"><i class="fa-solid fa-robot"></i></div>
+                    <h1 class="text-xl font-bold tracking-wider">Come Play AI</h1>
+                    <p class="text-indigo-300 text-sm mt-1">เพื่อนเสมือนของคุณ</p>
+                </div>
+                <nav id="main-nav" class="p-4 space-y-2 overflow-y-auto flex-1">
+                    <button onclick="showView('dashboard-view', 'nav-home')" id="nav-home" class="w-full flex items-center space-x-3 px-4 py-3 bg-indigo-800 rounded-lg text-white font-medium shadow-inner transition"><i class="fa-solid fa-house w-5 text-center"></i><span>หน้าหลัก</span></button>
+                    <button onclick="openCreateCharMode()" id="nav-create" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-user-pen w-5 text-center"></i><span>สร้างตัวละคร</span></button>
+                    <button onclick="showView('studio-view', 'nav-studio')" id="nav-studio" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-chart-simple w-5 text-center"></i><span>สถิติตัวละครของฉัน</span></button>
+                    <button onclick="showView('ranking-view', 'nav-ranking')" id="nav-ranking" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-trophy w-5 text-center"></i><span>อันดับยอดนิยม</span></button>
+                    <button onclick="showView('diary-view', 'nav-diary')" id="nav-diary" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-book-journal-whills w-5 text-center"></i><span>บันทึกประจำวัน</span></button>
+                    <button onclick="showView('history-view', 'nav-history')" id="nav-history" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i><span>ประวัติทำรายการ</span></button>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-indigo-800 bg-indigo-950">
+                <div class="flex items-center justify-between mb-4 bg-indigo-900 p-2 rounded-lg border border-indigo-700">
+                    <div class="flex items-center space-x-2 text-yellow-400"><i class="fa-solid fa-coins"></i><span id="user-coin-balance" class="font-bold transition-all duration-500">0</span></div>
+                    <button onclick="showView('topup-view', '')" class="bg-gradient-to-r from-yellow-400 to-orange-500 text-indigo-900 text-xs font-bold px-3 py-1.5 rounded hover:from-yellow-300 hover:to-orange-400 transition shadow transform hover:scale-105">เติมเงิน</button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 cursor-pointer group" onclick="showView('profile-view', '')">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" class="w-10 h-10 rounded-full bg-indigo-200 border border-indigo-500 group-hover:border-white transition">
+                        <div><p id="sidebar-username" class="text-sm font-semibold text-white group-hover:text-indigo-100">ผู้ใช้งาน</p><p class="text-xs text-indigo-300 group-hover:text-white transition">จัดการโปรไฟล์</p></div>
+                    </div>
+                    <div class="flex space-x-1">
+                        <button onclick="showView('settings-view', '')" class="text-indigo-300 hover:text-white transition p-2 rounded-full hover:bg-indigo-800" title="ตั้งค่า"><i class="fa-solid fa-gear"></i></button>
+                        <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 transition p-2 rounded-full hover:bg-indigo-800" title="ออกจากระบบ"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col relative h-full overflow-hidden bg-slate-50 transition-colors duration-300">
+            <div id="dashboard-view" class="view-section flex-1 overflow-y-auto p-8 block animate-fade-in">
+                <div id="daily-login-banner" class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg mb-8 flex justify-between items-center relative overflow-hidden transition-all duration-500">
+                    <div class="relative z-10"><h2 class="text-2xl font-bold mb-1">ยินดีต้อนรับกลับมา! 🎉</h2><p class="text-indigo-100">อย่าลืมกดรับรางวัลประจำวันของคุณ!</p></div>
+                    <button onclick="showDailyRewardModal()" class="relative z-10 bg-white text-indigo-600 font-bold py-3 px-6 rounded-full hover:bg-indigo-50 hover:scale-105 transition transform shadow-md flex items-center space-x-2"><i class="fa-solid fa-gift text-xl"></i><span>รับรางวัลรายวัน</span></button>
+                    <i class="fa-solid fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-20"></i>
+                </div>
+                <div class="flex justify-between items-end mb-6">
+                    <div><h3 class="text-xl font-bold text-slate-800">เพื่อนของคุณ</h3><p class="text-sm text-slate-500">เลือกตัวละครเพื่อเริ่มการสนทนา หรือกดไอคอนดินสอเพื่อแก้ไข</p></div>
+                    <div class="relative"><input type="text" id="search-input" onkeyup="filterCharacters()" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 bg-white shadow-sm"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i></div>
+                </div>
+                <div id="character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
+                    <div id="create-new-btn" class="bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center h-full min-h-[280px] hover:bg-slate-200 hover:border-indigo-400 transition cursor-pointer text-slate-500 hover:text-indigo-600" onclick="openCreateCharMode()">
+                        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3"><i class="fa-solid fa-plus text-2xl"></i></div>
+                        <span class="font-medium">สร้างตัวละครใหม่</span>
+                    </div>
+                </div>
+                <div id="search-empty" class="hidden text-center py-10"><i class="fa-solid fa-ghost text-5xl text-slate-300 mb-4"></i><p class="text-slate-500">ไม่พบตัวละครที่คุณค้นหา</p></div>
+
+                <div class="mt-10 pt-8 border-t border-slate-200">
+                    <div class="flex justify-between items-end mb-6">
+                        <div><h3 class="text-xl font-bold text-slate-800">ค้นหาตัวละครสาธารณะ</h3><p class="text-sm text-slate-500">คุยกับตัวละครที่ผู้ใช้งานคนอื่นสร้างและแชร์ไว้</p></div>
+                        <div class="relative"><input type="text" id="public-search-input" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 bg-white shadow-sm"><i class="fa-solid fa-earth-americas absolute left-3 top-2.5 text-slate-400"></i></div>
+                    </div>
+                    <div id="public-character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8"></div>
+                    <div id="public-search-empty" class="hidden text-center py-10 text-slate-500"><i class="fa-solid fa-ghost text-5xl text-slate-300 mb-4"></i><p>ไม่พบตัวละครสาธารณะที่คุณค้นหา</p></div>
+                </div>
+            </div>
+
+            <div id="create-char-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-3xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                        <div class="bg-indigo-600 p-6 text-white flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl backdrop-blur"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                            <div><h2 id="create-char-title" class="text-2xl font-bold">สร้างตัวละครใหม่ (Custom Character)</h2><p id="create-char-subtitle" class="text-indigo-100 text-sm">กำหนดบุคลิก รูปร่างหน้าตา และตั้งค่าความเป็นส่วนตัว</p></div>
+                        </div>
+                        <form id="create-char-form" class="p-8 space-y-6" onsubmit="saveCharacter(event)">
+                            <div class="flex items-center space-x-6">
+                                <div class="w-28 h-28 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 relative overflow-hidden shadow-inner" id="avatar-preview">
+                                    <i class="fa-solid fa-image text-3xl" id="avatar-placeholder"></i>
+                                    <img id="avatar-img" src="" class="hidden w-full h-full object-cover bg-amber-50">
+                                    <video id="avatar-vid" src="" class="hidden w-full h-full object-cover bg-black" autoplay loop muted playsinline></video>
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">รูปภาพ / วิดีโอตัวละคร (Avatar)</label>
+                                    <div class="flex space-x-3">
+                                        <button type="button" onclick="document.getElementById('media-upload').click()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm rounded-lg font-bold transition border border-indigo-200 flex items-center shadow-sm"><i class="fa-solid fa-cloud-arrow-up mr-2"></i> อัปโหลดไฟล์</button>
+                                        <button type="button" onclick="generateRandomAvatar()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 text-sm rounded-lg font-medium transition border border-slate-300"><i class="fa-solid fa-shuffle mr-1"></i> สุ่มรูปภาพ</button>
+                                    </div>
+                                    <input type="file" id="media-upload" class="hidden" accept="image/*,video/mp4,video/webm" onchange="handleMediaUpload(event)">
+                                    <p class="text-xs text-slate-400 mt-2"><i class="fa-solid fa-circle-info mr-1"></i> รองรับไฟล์รูปภาพและวิดีโอสั้น (MP4)</p>
+                                </div>
+                            </div>
+                            <div><label class="block text-sm font-bold text-slate-700 mb-2">ชื่อตัวละคร <span class="text-red-500">*</span></label><input type="text" id="charName" required placeholder="เช่น: มะลิ, พี่จอห์น" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500"></div>
+                            <div><label class="block text-sm font-bold text-slate-700 mb-2">บุคลิกนิสัย (System Prompt) <span class="text-red-500">*</span></label><textarea id="charPrompt" required rows="4" placeholder="เช่น: คุณคือสาวน้อยวัย 20 ปี ร่าเริง สดใส ให้คำปรึกษาเก่ง..." class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 resize-none"></textarea></div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-3">สถานะการแชร์ (Privacy)</label>
+                                <div class="flex space-x-6">
+                                    <label class="flex items-center space-x-3 cursor-pointer"><input type="radio" name="privacy" value="public" class="w-4 h-4 text-indigo-600" checked><span class="text-slate-700"><i class="fa-solid fa-earth-americas text-indigo-500 mr-1"></i> สาธารณะ (คนอื่นหาเจอ)</span></label>
+                                    <label class="flex items-center space-x-3 cursor-pointer"><input type="radio" name="privacy" value="private" class="w-4 h-4 text-indigo-600"><span class="text-slate-700"><i class="fa-solid fa-lock text-slate-400 mr-1"></i> ส่วนตัว (คุยได้คนเดียว)</span></label>
+                                </div>
+                            </div>
+                            <div class="pt-6 border-t border-slate-100 flex justify-end space-x-4">
+                                <button type="button" onclick="showView('dashboard-view', 'nav-home')" class="px-6 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium">ยกเลิก</button>
+                                <button type="submit" id="submit-char-btn" class="px-6 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg transition">บันทึกตัวละคร</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ranking-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-trophy mr-2"></i> อันดับยอดนิยม</h2><p class="text-amber-100">ตัวละคร AI ที่ได้รับความนิยมสูงสุดจากผู้ใช้งานทั้งหมดในระบบ</p></div>
+                        <i class="fa-solid fa-crown absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <ul id="ranking-list" class="divide-y divide-slate-100"></ul>
+                        <div id="ranking-empty" class="hidden text-center py-10 text-slate-500">ยังไม่มีตัวละครสาธารณะในระบบ</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="diary-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-book-open mr-2"></i> บันทึกความทรงจำ (Diary)</h2><p class="text-emerald-100">ระบบ AI ทำการสรุปเรื่องราวที่คุณคุยในแต่ละวันมาเก็บไว้ที่นี่โดยอัตโนมัติ</p></div>
+                        <i class="fa-solid fa-book-journal-whills absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+                    <div id="diary-list" class="space-y-6"></div>
+                    <div id="diary-empty" class="hidden text-center py-10 text-slate-500 bg-white rounded-2xl border border-slate-200">ยังไม่มีบันทึกประจำวัน ลองคุยกับตัวละครแล้วออกจากห้องแชทดูสิครับ ระบบจะสรุปบันทึกให้อัตโนมัติ</div>
+                </div>
+            </div>
+
+            <div id="history-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-5xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-slate-800"><i class="fa-solid fa-file-invoice-dollar text-indigo-500 mr-2"></i> ประวัติการทำรายการ</h2>
+                            <button onclick="showView('topup-view', '')" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-100 transition">เติมเงินเพิ่ม</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-slate-600 text-sm">
+                                <thead class="bg-slate-100/50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
+                                    <tr><th class="px-6 py-4">รหัสรายการ</th><th class="px-6 py-4">วัน-เวลา</th><th class="px-6 py-4">รายการ/แพ็กเกจ</th><th class="px-6 py-4 text-right">ยอดชำระ (บาท)</th><th class="px-6 py-4 text-center">สถานะ</th></tr>
+                                </thead>
+                                <tbody id="transaction-list" class="divide-y divide-slate-100">
+                                    <tr class="hover:bg-slate-50 transition"><td class="px-6 py-4 text-center text-slate-400" colspan="5">ยังไม่มีประวัติทำรายการ (ระบบเติมเงินยังอยู่ระหว่างการพัฒนา)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="studio-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-6xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-chart-line mr-2"></i> สตูดิโอผู้สร้าง (Creator Studio)</h2><p class="text-indigo-100">ตรวจสอบสถิติการใช้งาน คะแนนรีวิว และคอมเมนต์ตัวละครที่คุณสร้าง</p></div>
+                        <i class="fa-solid fa-chart-pie absolute -right-6 -bottom-6 text-9xl text-white opacity-20"></i>
+                    </div>
+                    <div id="studio-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+                    <div id="studio-empty" class="hidden text-center py-10 text-slate-500 bg-white rounded-2xl border border-slate-200">คุณยังไม่มีตัวละครที่สร้างไว้เลย</div>
+                </div>
+            </div>
+
+            <div id="profile-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-2xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center space-x-3"><i class="fa-solid fa-user-gear text-xl text-indigo-600"></i><h2 class="text-xl font-bold text-slate-800">จัดการข้อมูลส่วนตัว</h2></div>
+                        <form class="p-8 space-y-6" onsubmit="saveProfile(event)">
+                            <div class="flex items-center space-x-6 pb-6 border-b border-slate-100">
+                                <div class="relative"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-24 h-24 rounded-full bg-indigo-100 border-4 border-white shadow-md"></div>
+                                <div><h3 class="font-bold text-slate-800">รูปโปรไฟล์</h3><p class="text-xs text-slate-500 mt-1">ยังไม่รองรับการเปลี่ยนรูปโปรไฟล์ในตอนนี้</p></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div><label class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน (Username)</label><input id="profile-username" type="text" readonly class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"></div>
+                                <div><label class="block text-sm font-bold text-slate-700 mb-2">อีเมล (Email)</label><input id="profile-email" type="email" readonly class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">เปลี่ยนรหัสผ่าน (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
+                                <input id="profile-old-password" type="password" placeholder="รหัสผ่านเดิม" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 mb-3">
+                                <input id="profile-new-password" type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 mb-3">
+                                <input id="profile-confirm-password" type="password" placeholder="ยืนยันรหัสผ่านใหม่" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="pt-4 flex justify-end space-x-3">
+                                <button type="button" onclick="showView('dashboard-view', 'nav-home')" class="px-6 py-2.5 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 transition font-medium">ยกเลิก</button>
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition">บันทึกการเปลี่ยนแปลง</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-2xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center space-x-3"><i class="fa-solid fa-gear text-xl text-slate-600"></i><h2 class="text-xl font-bold text-slate-800">ตั้งค่าระบบ (Settings)</h2></div>
+                        <div class="p-8 space-y-8">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">การแสดงผล & เสียง</h3>
+                                <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                                    <div><p class="font-bold text-slate-700">โหมดมืด (Dark Mode)</p><p class="text-xs text-slate-500">ปรับหน้าจอเป็นสีเข้มเพื่อถนอมสายตา</p></div>
+                                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" name="toggle" id="toggle-dark" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                        <label for="toggle-dark" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                                    <div><p class="font-bold text-slate-700">เสียงการแจ้งเตือนแชท</p><p class="text-xs text-slate-500">เล่นเสียงเมื่อมีข้อความตอบกลับใหม่</p></div>
+                                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" name="toggle" id="toggle-sound" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/>
+                                        <label for="toggle-sound" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-red-400 uppercase tracking-wider mb-4">พื้นที่อันตราย (Danger Zone)</h3>
+                                <div class="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center justify-between">
+                                    <div><p class="font-bold text-red-700">ลบบัญชีผู้ใช้งานถาวร</p><p class="text-xs text-red-500">ข้อมูลทั้งหมด รวมถึงตัวละคร จะถูกลบออกและกู้คืนไม่ได้</p></div>
+                                    <button onclick="showCustomAlert('เพื่อความปลอดภัย ฟังก์ชันนี้ปิดการใช้งานในระบบทดสอบ', 'ข้อควรระวัง')" class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition shadow">ลบบัญชี</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="topup-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-5xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-indigo-900 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10 flex justify-between items-center">
+                            <div><h2 class="text-3xl font-bold mb-2">ร้านค้าเหรียญ (Store)</h2><p class="text-indigo-200">เติมเหรียญเพื่อใช้งานฟังก์ชัน AI พิเศษและพูดคุยได้มากขึ้น</p></div>
+                            <div class="text-right bg-black/30 backdrop-blur border border-white/10 px-6 py-3 rounded-xl"><p class="text-xs text-indigo-300 font-bold mb-1">ยอดเงินคงเหลือของคุณ</p><div class="flex items-center text-3xl font-black text-yellow-400"><i class="fa-solid fa-coins mr-3"></i><span id="store-coin-display">0</span></div></div>
+                        </div>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl p-4 mb-6"><i class="fa-solid fa-circle-info mr-2"></i> ระบบเติมเงินจริงยังอยู่ระหว่างการพัฒนา ตอนนี้เป็นการสาธิตหน้าตาเท่านั้น (ยังไม่ตัดเงินจริง)</div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition flex flex-col">
+                            <div class="p-6 text-center border-b border-slate-100 flex-1"><div class="w-16 h-16 bg-yellow-50 text-yellow-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-coins"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจเริ่มต้น</h4><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">100 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
+                            <div class="p-4 bg-slate-50"><button onclick="openPaymentModal(100, 29, 'แพ็กเกจเริ่มต้น')" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ 29.00</button></div>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-xl border-2 border-orange-400 overflow-hidden hover:shadow-2xl transition relative flex flex-col">
+                            <div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">ยอดนิยม</div>
+                            <div class="p-6 text-center border-b border-slate-100 flex-1 bg-gradient-to-b from-orange-50/50 to-white"><div class="w-20 h-20 bg-gradient-to-br from-yellow-300 to-orange-500 text-white rounded-full mx-auto flex items-center justify-center text-4xl mb-4 shadow-lg"><i class="fa-solid fa-sack-dollar"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจคุ้มค่า</h4><p class="text-sm text-orange-600 font-bold mt-2">+ รับโบนัสฟรี 50 เหรียญ!</p><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">550 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
+                            <div class="p-4 bg-orange-50"><button onclick="openPaymentModal(550, 129, 'แพ็กเกจคุ้มค่า')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 rounded-xl shadow-md transition">฿ 129.00</button></div>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition flex flex-col">
+                            <div class="p-6 text-center border-b border-slate-100 flex-1"><div class="w-16 h-16 bg-purple-50 text-purple-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-gem"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจพรีเมียม</h4><p class="text-sm text-purple-600 font-bold mt-2">+ รับโบนัสฟรี 200 เหรียญ!</p><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">1,200 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
+                            <div class="p-4 bg-slate-50"><button onclick="openPaymentModal(1200, 249, 'แพ็กเกจพรีเมียม')" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ 249.00</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chat-view" class="view-section flex-1 relative hidden h-full">
+                <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
+                    <img id="chat-bg-image" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                    <video id="chat-bg-video" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
+                </div>
+                <div class="absolute inset-0 bg-slate-900/50 z-0"></div>
+                <div class="relative z-10 flex flex-col h-full w-full">
+                    <div class="shrink-0 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="showPostEmotion()" class="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="ออกจากการสนทนา"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative bg-slate-100">
+                                    <img id="chat-header-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                                    <video id="chat-header-vid" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
+                                </div>
+                                <div><h3 id="chat-name-tag" class="font-bold text-slate-800 leading-tight">Name</h3><div class="flex items-center text-xs text-green-500 font-medium"><span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span> ออนไลน์</div></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
+                            <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
+                        </div>
+                    </div>
+                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col scroll-smooth">
+                        <div class="flex-1 min-h-[20px]"></div>
+                        <div id="chat-messages" class="space-y-6 flex flex-col w-full mt-auto pb-2"></div>
+                    </div>
+                    <div class="shrink-0 bg-white p-4 border-t border-slate-200 w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
+                        <form onsubmit="sendMessage(event)" class="max-w-5xl mx-auto flex items-end space-x-3">
+                            <div class="flex-1 bg-slate-100 border border-slate-200 focus-within:border-indigo-400 focus-within:bg-white rounded-2xl overflow-hidden flex items-end transition-colors">
+                                <textarea id="chat-input" rows="1" placeholder="พิมพ์ข้อความพูดคุย..." class="w-full bg-transparent text-slate-800 px-5 py-3.5 outline-none resize-none max-h-32 text-sm md:text-base"></textarea>
+                            </div>
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="custom-alert-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center mx-4 animate-pop-up">
+            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2" id="custom-alert-title">แจ้งเตือน</h3>
+            <p class="text-slate-600 mb-8" id="custom-alert-message">ทำรายการสำเร็จ</p>
+            <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:scale-105">ตกลง</button>
+        </div>
+    </div>
+
+    <div id="custom-confirm-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center mx-4 animate-pop-up">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2" id="custom-confirm-title">ยืนยัน</h3>
+            <p class="text-slate-600 mb-8" id="custom-confirm-message">คุณต้องการดำเนินการนี้ใช่หรือไม่?</p>
+            <div class="flex space-x-3">
+                <button onclick="closeCustomConfirm()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition">ยกเลิก</button>
+                <button id="custom-confirm-ok-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="review-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 animate-pop-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-star"></i></div>
+                <h3 class="text-xl font-bold text-slate-800 mb-1">ให้คะแนนตัวละครนี้</h3>
+                <p class="text-slate-500 text-sm">คะแนนและรีวิวของคุณจะช่วยให้ผู้อื่นตัดสินใจได้ดีขึ้น</p>
+            </div>
+            <form onsubmit="submitReview(event)" class="space-y-4">
+                <div class="flex justify-center items-center text-3xl text-slate-300 star-rating" id="review-stars">
+                    <i class="fa-solid fa-star" onclick="setReviewRating(1)"></i><i class="fa-solid fa-star" onclick="setReviewRating(2)"></i><i class="fa-solid fa-star" onclick="setReviewRating(3)"></i><i class="fa-solid fa-star" onclick="setReviewRating(4)"></i><i class="fa-solid fa-star" onclick="setReviewRating(5)"></i>
+                </div>
+                <input type="hidden" id="review-rating-val" value="0">
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">ความคิดเห็น (ไม่บังคับ)</label><textarea id="review-comment" rows="3" placeholder="บอกเล่าประสบการณ์การคุยกับตัวละครนี้..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 resize-none bg-slate-50 text-sm"></textarea></div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeReviewModal()" class="flex-1 px-6 py-2.5 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 transition font-medium">ยกเลิก</button>
+                    <button type="submit" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-lg shadow-lg transition">ส่งรีวิว</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="post-emotion-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity overflow-y-auto py-10">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-8 max-w-sm w-full relative mx-4 animate-pop-up my-auto">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-3 shadow-inner"><i class="fa-solid fa-heart-pulse"></i></div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-1">เช็คอินใจหลังคุย 🤍</h2>
+                <p class="text-slate-500 text-sm">หลังจากพูดคุยแล้ว ตอนนี้คุณรู้สึกอย่างไรบ้าง?</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="submitEmotion('ดีขึ้นมาก')" class="emotion-btn bg-green-50 hover:bg-green-100 border border-green-200 p-4 rounded-2xl flex flex-col items-center"><span class="text-4xl mb-2">😊</span><span class="text-sm font-bold text-green-700">ดีขึ้นมาก</span></button>
+                <button onclick="submitEmotion('ผ่อนคลาย')" class="emotion-btn bg-blue-50 hover:bg-blue-100 border border-blue-200 p-4 rounded-2xl flex flex-col items-center"><span class="text-4xl mb-2">😌</span><span class="text-sm font-bold text-blue-700">ผ่อนคลาย</span></button>
+                <button onclick="submitEmotion('เฉยๆ')" class="emotion-btn bg-slate-50 hover:bg-slate-100 border border-slate-200 p-4 rounded-2xl flex flex-col items-center"><span class="text-4xl mb-2">😐</span><span class="text-sm font-bold text-slate-700">เฉยๆ / ปกติ</span></button>
+                <button onclick="submitEmotion('ยังเศร้า/เครียด')" class="emotion-btn bg-orange-50 hover:bg-orange-100 border border-orange-200 p-4 rounded-2xl flex flex-col items-center"><span class="text-4xl mb-2">😔</span><span class="text-sm font-bold text-orange-700">ยังไม่ค่อยดีขึ้น</span></button>
+            </div>
+            <div class="text-center border-t border-slate-100 pt-4"><button onclick="skipEmotion()" class="text-sm font-bold text-slate-400 hover:text-indigo-500 transition">ข้ามการประเมินอารมณ์ <i class="fa-solid fa-arrow-right ml-1"></i></button></div>
+        </div>
+    </div>
+
+    <div id="post-questionnaire-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity py-10">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 border border-indigo-100 animate-pop-up flex flex-col max-h-[90vh]">
+            <div class="shrink-0 text-center mb-4 border-b border-slate-100 pb-4">
+                <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-2xl mb-3 shadow-inner"><i class="fa-solid fa-list-check"></i></div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-1">แบบประเมินความพึงพอใจ 10 ข้อ</h2>
+                <p class="text-slate-500 text-sm">การประเมิน <span id="survey-char-name" class="font-bold text-indigo-600">ตัวละคร</span> เพื่อนำไปปรับปรุง AI ให้ดียิ่งขึ้น</p>
+            </div>
+            <form onsubmit="submitQuestionnaire(event)" class="flex-1 overflow-y-auto pr-2" id="survey-form">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-bold text-indigo-800 bg-indigo-50 py-2 px-4 rounded-lg mb-3">ส่วนที่ 1: สุขภาพจิตและความรู้สึก (Mental Health & Emotion)</h3>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">1. หลังจากการสนทนา คุณรู้สึกคลายความเหงาหรือความโดดเดี่ยวลดลงหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-1"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(1, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(1, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(1, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(1, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(1, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-1" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">2. การพูดคุยกับตัวละคร AI ช่วยให้คุณรู้สึกผ่อนคลายจากความเครียดหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-2"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(2, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(2, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(2, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(2, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(2, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-2" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">3. คุณรู้สึกว่าได้รับพลังงานบวกหรือกำลังใจจากการสนทนาครั้งนี้หรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-3"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(3, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(3, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(3, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(3, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(3, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-3" value="0"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-indigo-800 bg-indigo-50 py-2 px-4 rounded-lg mb-3">ส่วนที่ 2: คุณภาพการโต้ตอบของ AI (AI & Interaction Quality)</h3>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">4. ตัวละคร AI สามารถตอบคำถามและสนทนาได้อย่างเป็นธรรมชาติหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-4"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(4, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(4, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(4, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(4, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(4, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-4" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">5. AI มีการแสดงออกทางบุคลิกภาพ (Persona) ที่ตรงกับที่คุณคาดหวังไว้หรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-5"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(5, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(5, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(5, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(5, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(5, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-5" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">6. AI สามารถจดจำเรื่องราวหรือบริบทการสนทนาก่อนหน้าได้อย่างแม่นยำหรือไม่? (RAG)</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-6"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(6, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(6, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(6, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(6, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(6, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-6" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">7. ข้อความตอบกลับของ AI มีความเหมาะสม ไม่ใช้คำพูดที่รุนแรงหรือทำร้ายจิตใจหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-7"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(7, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(7, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(7, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(7, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(7, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-7" value="0"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-indigo-800 bg-indigo-50 py-2 px-4 rounded-lg mb-3">ส่วนที่ 3: ประสบการณ์ใช้งานโดยรวม (Overall UX & Satisfaction)</h3>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">8. คุณพึงพอใจกับความรวดเร็วในการตอบสนองของระบบหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-8"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(8, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(8, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(8, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(8, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(8, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-8" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">9. อินเทอร์เฟซสไตล์ Visual Novel ช่วยให้คุณรู้สึกอินกับการสนทนามากขึ้นหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-9"><span class="text-xs text-slate-400 font-normal">น้อยที่สุด</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(9, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(9, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(9, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(9, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(9, 5)"></i></div><span class="text-xs text-slate-400 font-normal">มากที่สุด</span></div><input type="hidden" id="rating-val-9" value="0"></div>
+                        <div class="mb-4 bg-white p-4 rounded-xl border border-slate-200"><p class="text-sm font-bold text-slate-700 mb-2">10. โดยรวมแล้ว คุณจะแนะนำแอปพลิเคชัน Come Play AI ให้เพื่อนหรือคนรู้จักหรือไม่?</p><div class="flex justify-between items-center text-2xl text-slate-300 star-rating" id="survey-stars-10"><span class="text-xs text-slate-400 font-normal">ไม่แนะนำ</span><div class="flex space-x-2"><i class="fa-solid fa-star" onclick="rateStar(10, 1)"></i><i class="fa-solid fa-star" onclick="rateStar(10, 2)"></i><i class="fa-solid fa-star" onclick="rateStar(10, 3)"></i><i class="fa-solid fa-star" onclick="rateStar(10, 4)"></i><i class="fa-solid fa-star" onclick="rateStar(10, 5)"></i></div><span class="text-xs text-slate-400 font-normal">แนะนำแน่นอน</span></div><input type="hidden" id="rating-val-10" value="0"></div>
+                        <div class="mb-2"><p class="text-sm font-bold text-slate-700 mb-2">ข้อเสนอแนะเพิ่มเติม (Optional)</p><textarea rows="3" placeholder="ข้อเสนอแนะเพื่อการพัฒนา..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 resize-none text-sm bg-white"></textarea></div>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-200 flex space-x-3 pb-2">
+                    <button type="button" onclick="skipQuestionnaire()" class="w-1/3 py-3.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">ข้ามทั้งหมด</button>
+                    <button type="submit" class="w-2/3 py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg transition">บันทึกแบบประเมิน 10 ข้อ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="daily-reward-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-8 max-w-sm w-full text-center mx-4">
+            <button onclick="closeDailyRewardModal()" class="absolute top-5 right-5 text-slate-400 hover:bg-slate-100 rounded-full w-8 h-8"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-6 mt-2 relative"><div class="w-28 h-28 bg-gradient-to-br from-yellow-100 to-amber-200 rounded-full mx-auto flex items-center justify-center border-4 border-white shadow-inner"><i class="fa-solid fa-coins text-6xl text-yellow-500 absolute animate-bounce" style="animation-duration: 1.5s;"></i></div></div>
+            <h2 class="text-2xl font-bold mb-2">รางวัลรายวัน!</h2>
+            <button onclick="claimDailyReward()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-4 rounded-xl mt-4 shadow-lg hover:scale-105 transition transform">รับรางวัล</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-indigo-600 p-5 text-white flex justify-between"><h3 class="font-bold">เลือกช่องทางการชำระเงิน</h3><button onclick="closePaymentModal()"><i class="fa-solid fa-xmark text-xl"></i></button></div>
+            <div class="p-6">
+                <div class="bg-indigo-50 p-4 rounded-xl mb-6 flex justify-between border border-indigo-100"><div><p class="text-xs text-indigo-500 font-bold mb-1">รายการสั่งซื้อ</p><p id="pay-package-name" class="font-bold text-slate-800">แพ็กเกจ</p></div><div class="text-right"><p class="text-xs text-indigo-500 font-bold mb-1">ยอดชำระ</p><p class="font-black text-xl text-indigo-600">฿<span id="pay-price">0</span>.00</p></div></div>
+                <form onsubmit="confirmPayment(event)" class="space-y-3">
+                    <label class="block cursor-pointer group"><input type="radio" name="payment_method" value="PromptPay" class="sr-only payment-radio" checked><div class="border-2 border-slate-200 rounded-xl p-4 flex items-center"><div class="w-10 h-10 bg-slate-100 flex items-center justify-center mr-4"><i class="fa-solid fa-qrcode text-blue-800"></i></div><div class="flex-1 font-bold text-sm">พร้อมเพย์</div><div class="w-5 h-5 rounded-full border-2 flex items-center justify-center check-icon opacity-0"><div class="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div></div></div></label>
+                    <label class="block cursor-pointer group"><input type="radio" name="payment_method" value="Credit Card" class="sr-only payment-radio"><div class="border-2 border-slate-200 rounded-xl p-4 flex items-center"><div class="w-10 h-10 bg-slate-100 flex items-center justify-center mr-4"><i class="fa-regular fa-credit-card text-slate-600"></i></div><div class="flex-1 font-bold text-sm">บัตรเครดิต</div><div class="w-5 h-5 rounded-full border-2 flex items-center justify-center check-icon opacity-0"><div class="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div></div></div></label>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl mt-4">ยืนยันชำระเงิน</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 animate-pop-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-flag"></i></div>
+                <h3 class="text-xl font-bold text-slate-800 mb-1">รายงานตัวละคร</h3>
+                <p class="text-slate-500 text-sm">หากพบว่า AI ใช้คำพูดรุนแรงหรือมีเนื้อหาไม่เหมาะสม กรุณาแจ้งผู้ดูแลระบบ</p>
+            </div>
+            <form onsubmit="submitReport(event)" class="space-y-4">
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">รายละเอียด <span class="text-red-500">*</span></label><textarea id="report-details" required rows="3" placeholder="ระบุข้อความที่พบปัญหา..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 resize-none bg-slate-50 text-sm"></textarea></div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeReportModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition">ยกเลิก</button>
+                    <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition">ส่งรายงาน</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080';
+
+        function isVideoFile(url) {
+            if (!url) return false;
+            return /\.(mp4|webm)(\?.*)?$/i.test(url);
+        }
+
+        function resolveMediaUrl(url) {
+            if (!url) return null;
+            if (url.startsWith('/')) return API_BASE_URL + url;
+            return url;
+        }
+
+        async function apiFetch(path, options = {}) {
+            const token = localStorage.getItem('token');
+            const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const response = await fetch(API_BASE_URL + path, { ...options, headers });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+            return data;
+        }
+
+        async function loadDashboardCharacters() {
+            try {
+                const characters = await apiFetch('/api/characters');
+                const grid = document.getElementById('character-grid');
+                grid.querySelectorAll('.char-card').forEach(card => card.remove());
+                characters.forEach(char => {
+                    const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    const safeName = char.name.replace(/'/g, "\\'");
+                    const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                    const mediaTagHTML = mediaType === 'video'
+                        ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
+                        : `<img src="${avatarUrl}" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                    const cardHTML = `
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer char-card flex flex-col animate-fade-in" data-name="${char.name}" data-character-id="${char.character_id}" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
+                            <div class="h-40 bg-emerald-100 relative overflow-hidden">
+                                ${mediaTagHTML}
+                                <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-emerald-600 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                            </div>
+                            <div class="p-4 flex flex-col flex-1">
+                                <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
+                                <p class="text-xs text-slate-500 line-clamp-2 mt-1 mb-2">${char.personality}</p>
+                                <div class="flex space-x-2 mt-auto pt-2 relative z-10 border-t border-slate-50">
+                                    <button class="chat-btn flex-1 bg-indigo-50 text-indigo-600 font-bold text-sm py-2 rounded-lg hover:bg-indigo-600 hover:text-white transition" onclick="event.stopPropagation(); enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">แชทเลย</button>
+                                    <button onclick="editCharacter(event, this)" class="px-3 bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-600 rounded-lg transition" title="แก้ไขตัวละคร"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="deleteCharacter(event, this)" class="px-3 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-lg transition" title="ลบตัวละคร"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>`;
+                    document.getElementById('create-new-btn').insertAdjacentHTML('beforebegin', cardHTML);
+                });
+            } catch (err) {
+                console.error('โหลดตัวละครไม่สำเร็จ:', err);
+            }
+        }
+
+        async function loadCoinBalance() {
+            try {
+                const coin = await apiFetch('/api/coins');
+                document.getElementById('user-coin-balance').innerText = coin.balance.toLocaleString();
+            } catch (err) {
+                console.error('โหลดยอดเหรียญไม่สำเร็จ:', err);
+                document.getElementById('user-coin-balance').innerText = '0';
+            }
+        }
+
+        async function searchPublicCharacters(query = '') {
+            try {
+                const path = query ? `/api/characters/public?q=${encodeURIComponent(query)}` : '/api/characters/public';
+                const characters = await apiFetch(path);
+                renderPublicCharacters(characters);
+            } catch (err) {
+                console.error('ค้นหาตัวละครสาธารณะไม่สำเร็จ:', err);
+            }
+        }
+
+        function renderPublicCharacters(characters) {
+            const grid = document.getElementById('public-character-grid');
+            grid.innerHTML = '';
+            document.getElementById('public-search-empty').classList.toggle('hidden', characters.length > 0);
+            characters.forEach(char => {
+                const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                const safeName = char.name.replace(/'/g, "\\'");
+                const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                const mediaTagHTML = mediaType === 'video'
+                    ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
+                    : `<img src="${avatarUrl}" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                const cardHTML = `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
+                        <div class="h-40 bg-indigo-100 relative overflow-hidden">
+                            ${mediaTagHTML}
+                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                        </div>
+                        <div class="p-4 flex flex-col flex-1">
+                            <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
+                            <p class="text-xs text-slate-500 line-clamp-2 mt-1 mb-2">${char.personality}</p>
+                            <button class="bg-indigo-50 text-indigo-600 font-bold text-sm py-2 rounded-lg hover:bg-indigo-600 hover:text-white transition mt-auto" onclick="event.stopPropagation(); enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">แชทเลย</button>
+                        </div>
+                    </div>`;
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        async function loadRankingList() {
+            try {
+                const characters = await apiFetch('/api/characters/popular');
+                const list = document.getElementById('ranking-list');
+                list.innerHTML = '';
+                document.getElementById('ranking-empty').classList.toggle('hidden', characters.length > 0);
+                const medalColors = ['text-yellow-400', 'text-slate-300', 'text-amber-600'];
+                characters.forEach((char, index) => {
+                    const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    const safeName = char.name.replace(/'/g, "\\'");
+                    const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                    const medalColor = medalColors[index] || 'text-slate-200';
+                    const li = document.createElement('li');
+                    li.className = 'p-5 hover:bg-amber-50/30 transition flex items-center justify-between';
+                    li.innerHTML = `
+                        <div class="flex items-center space-x-5">
+                            <div class="w-12 text-center"><i class="fa-solid fa-medal text-3xl ${medalColor} drop-shadow-md"></i></div>
+                            <img src="${avatarUrl}" class="w-16 h-16 rounded-full border-4 border-slate-200 bg-indigo-100 shadow-sm object-cover">
+                            <div><h4 class="font-bold text-xl text-slate-800">${char.name}</h4><p class="text-sm text-slate-500">${char.personality}</p></div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
+                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">แชท</button>
+                        </div>`;
+                    li.querySelector('button').addEventListener('click', () => enterChatRoom(char.character_id, safeName, avatarUrl, mediaType));
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                console.error('โหลดอันดับยอดนิยมไม่สำเร็จ:', err);
+            }
+        }
+
+        async function loadDiaryList() {
+            try {
+                const diaries = await apiFetch('/api/diaries');
+                const list = document.getElementById('diary-list');
+                list.innerHTML = '';
+                document.getElementById('diary-empty').classList.toggle('hidden', diaries.length > 0);
+                diaries.forEach(d => {
+                    const dateText = new Date(d.entry_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-6 rounded-2xl shadow-sm border border-slate-200';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                            <h3 class="font-bold text-lg text-slate-800"><i class="fa-regular fa-calendar text-emerald-500 mr-2"></i> วันที่ ${dateText}</h3>
+                            <span class="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full">คุยกับ: ${d.character_name}</span>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed text-sm">${d.summary}</p>`;
+                    list.appendChild(card);
+                });
+            } catch (err) {
+                console.error('โหลดบันทึกประจำวันไม่สำเร็จ:', err);
+            }
+        }
+
+        async function loadStudioStats() {
+            try {
+                const stats = await apiFetch('/api/characters/stats');
+                const grid = document.getElementById('studio-grid');
+                grid.innerHTML = '';
+                document.getElementById('studio-empty').classList.toggle('hidden', stats.length > 0);
+                for (const s of stats) {
+                    const avatarUrl = resolveMediaUrl(s.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(s.name)}`;
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col';
+                    card.innerHTML = `
+                        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <div class="flex items-center space-x-4"><img src="${avatarUrl}" class="w-16 h-16 rounded-full bg-indigo-100 border-2 border-white shadow-sm object-cover"><div><h3 class="font-bold text-lg text-slate-800">${s.name}</h3></div></div>
+                        </div>
+                        <div class="p-6 grid grid-cols-3 gap-4 border-b border-slate-100">
+                            <div class="bg-slate-50 p-4 rounded-xl text-center"><p class="text-xs text-slate-500 font-bold mb-1">ยอดใช้งานทั้งหมด</p><p class="text-2xl font-black text-indigo-600">${s.usage_count} <span class="text-sm font-normal text-slate-400">ครั้ง</span></p></div>
+                            <div class="bg-slate-50 p-4 rounded-xl text-center"><p class="text-xs text-slate-500 font-bold mb-1">คนคุยไม่ซ้ำ</p><p class="text-2xl font-black text-emerald-600">${s.unique_chatters} <span class="text-sm font-normal text-slate-400">คน</span></p></div>
+                            <div class="bg-slate-50 p-4 rounded-xl text-center"><p class="text-xs text-slate-500 font-bold mb-1">คะแนนเฉลี่ย</p><p class="text-2xl font-black text-amber-500"><i class="fa-solid fa-star text-lg"></i> ${Number(s.rating).toFixed(1)}</p></div>
+                        </div>
+                        <div class="p-6 flex-1 bg-slate-50/50 review-container">
+                            <h4 class="font-bold text-sm text-slate-700 mb-3"><i class="fa-regular fa-comments mr-2"></i> คอมเมนต์ล่าสุดจากผู้ใช้งาน</h4>
+                            <div class="review-list space-y-3 text-sm text-slate-400">กำลังโหลด...</div>
+                        </div>`;
+                    grid.appendChild(card);
+                    apiFetch(`/api/characters/${s.character_id}/reviews`)
+                        .then(reviews => {
+                            const reviewList = card.querySelector('.review-list');
+                            if (reviews.length === 0) { reviewList.innerHTML = '<p class="text-slate-400">ยังไม่มีรีวิว</p>'; return; }
+                            reviewList.innerHTML = reviews.slice(0, 3).map(r => `
+                                <div class="bg-white p-3 rounded-lg border border-slate-200 text-sm">
+                                    <div class="flex justify-between mb-1"><span class="font-bold text-indigo-600">${r.username}</span><span class="text-amber-500 text-xs"><i class="fa-solid fa-star"></i> ${r.rating}</span></div>
+                                    <p class="text-slate-600">${r.comment || ''}</p>
+                                </div>`).join('');
+                        })
+                        .catch(() => { card.querySelector('.review-list').innerHTML = '<p class="text-slate-400">โหลดรีวิวไม่สำเร็จ</p>'; });
+                }
+            } catch (err) {
+                console.error('โหลดสถิติตัวละครไม่สำเร็จ:', err);
+            }
+        }
+
+        function loadProfileInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            document.getElementById('profile-username').value = user.username || '';
+            document.getElementById('profile-email').value = user.email || '';
+        }
+
+        let currentChatCharacterId = null;
+        let currentChatCharName = '';
+        let chatActiveMediaUrl = '';
+        let chatActiveMediaType = 'image';
+        let hasChattedInCurrentSession = false;
+        let pendingPaymentCoins = 0;
+        let pendingPaymentPrice = 0;
+        let pendingPackageName = '';
+        let transactionCount = 1;
+        let uploadMediaUrl = '';
+        let uploadMediaType = 'image';
+        let isUploadingMedia = false;
+        let editingCard = null;
+        let publicSearchTimeout = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleDark = document.getElementById('toggle-dark');
+            const isDark = localStorage.getItem('theme') === 'dark';
+            if (isDark) { document.body.classList.add('dark-theme'); if (toggleDark) toggleDark.checked = true; }
+            if (toggleDark) {
+                toggleDark.addEventListener('change', function (e) {
+                    if (e.target.checked) { document.body.classList.add('dark-theme'); localStorage.setItem('theme', 'dark'); }
+                    else { document.body.classList.remove('dark-theme'); localStorage.setItem('theme', 'light'); }
+                });
+            }
+            const publicSearchInput = document.getElementById('public-search-input');
+            if (publicSearchInput) {
+                publicSearchInput.addEventListener('keyup', function () {
+                    clearTimeout(publicSearchTimeout);
+                    const query = this.value.trim();
+                    publicSearchTimeout = setTimeout(() => searchPublicCharacters(query), 300);
+                });
+            }
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.closest('form').requestSubmit(); }
+                });
+            }
+        });
+
+        function showLogin() {
+            document.getElementById('register-view').classList.add('hidden');
+            if (document.getElementById('forgot-password-view')) document.getElementById('forgot-password-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        }
+        function showRegister() {
+            document.getElementById('login-view').classList.add('hidden');
+            if (document.getElementById('forgot-password-view')) document.getElementById('forgot-password-view').classList.add('hidden');
+            document.getElementById('register-view').classList.remove('hidden');
+        }
+        function showForgotPassword() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('register-view').classList.add('hidden');
+            document.getElementById('forgot-password-view').classList.remove('hidden');
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            try {
+                const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                document.getElementById('sidebar-username').innerText = data.user.username;
+                document.getElementById('auth-layout').classList.add('hidden');
+                document.getElementById('app-layout').classList.remove('hidden');
+                showView('dashboard-view', 'nav-home');
+                showCustomAlert('เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับสู่ Come Play AI', 'สำเร็จ');
+                loadDashboardCharacters();
+                loadCoinBalance();
+                searchPublicCharacters();
+            } catch (err) {
+                showCustomAlert(err.message, 'เข้าสู่ระบบไม่สำเร็จ');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            try {
+                await apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) });
+                showCustomAlert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบเพื่อเริ่มใช้งาน', 'สมัครสมาชิกสำเร็จ');
+                showLogin();
+                event.target.reset();
+            } catch (err) {
+                showCustomAlert(err.message, 'สมัครสมาชิกไม่สำเร็จ');
+            }
+        }
+
+        function handleForgotPassword(event) {
+            event.preventDefault();
+            showCustomAlert('ระบบได้ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (Inbox) ของคุณ', 'ส่งลิงก์สำเร็จ');
+            showLogin();
+            event.target.reset();
+        }
+
+        function handleLogout() {
+            showCustomConfirm('คุณต้องการออกจากระบบใช่หรือไม่?', () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                document.getElementById('app-layout').classList.add('hidden');
+                document.getElementById('auth-layout').classList.remove('hidden');
+                showLogin();
+            });
+        }
+
+        function showCustomAlert(message, title = "แจ้งเตือน") {
+            document.getElementById('custom-alert-title').innerText = title;
+            document.getElementById('custom-alert-message').innerText = message;
+            document.getElementById('custom-alert-modal').classList.remove('hidden');
+        }
+        function closeCustomAlert() { document.getElementById('custom-alert-modal').classList.add('hidden'); }
+
+        let confirmActionCallback = null;
+        function showCustomConfirm(message, callback) {
+            document.getElementById('custom-confirm-message').innerText = message;
+            const iconContainer = document.querySelector('#custom-confirm-modal .fa-triangle-exclamation').parentElement;
+            iconContainer.className = 'w-16 h-16 bg-amber-100 text-amber-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner';
+            confirmActionCallback = callback;
+            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+        }
+        function closeCustomConfirm() { document.getElementById('custom-confirm-modal').classList.add('hidden'); confirmActionCallback = null; }
+        document.getElementById('custom-confirm-ok-btn').addEventListener('click', () => { if (confirmActionCallback) confirmActionCallback(); closeCustomConfirm(); });
+
+        function showView(viewId, navId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            document.querySelectorAll('#main-nav button').forEach(el => {
+                el.classList.remove('bg-indigo-800', 'text-white', 'shadow-inner');
+                el.classList.add('text-indigo-200', 'hover:bg-indigo-800');
+            });
+            if (navId && document.getElementById(navId)) {
+                document.getElementById(navId).classList.add('bg-indigo-800', 'text-white', 'shadow-inner');
+                document.getElementById(navId).classList.remove('text-indigo-200', 'hover:bg-indigo-800');
+            }
+            if (viewId === 'topup-view') document.getElementById('store-coin-display').innerText = document.getElementById('user-coin-balance').innerText;
+            if (viewId === 'ranking-view') loadRankingList();
+            if (viewId === 'diary-view') loadDiaryList();
+            if (viewId === 'studio-view') loadStudioStats();
+            if (viewId === 'profile-view') loadProfileInfo();
+        }
+
+        async function saveProfile(event) {
+            event.preventDefault();
+            const oldPassword = document.getElementById('profile-old-password').value;
+            const newPassword = document.getElementById('profile-new-password').value;
+            const confirmPassword = document.getElementById('profile-confirm-password').value;
+            if (!oldPassword && !newPassword && !confirmPassword) { showView('dashboard-view', 'nav-home'); return; }
+            if (!oldPassword || !newPassword || !confirmPassword) { showCustomAlert('กรุณากรอกรหัสผ่านให้ครบทั้ง 3 ช่อง', 'ข้อมูลไม่ครบ'); return; }
+            if (newPassword !== confirmPassword) { showCustomAlert('รหัสผ่านใหม่และรหัสยืนยันไม่ตรงกัน', 'ข้อมูลไม่ตรงกัน'); return; }
+            if (newPassword.length < 8) { showCustomAlert('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร', 'รหัสผ่านสั้นเกินไป'); return; }
+            try {
+                await apiFetch('/api/auth/password', { method: 'PUT', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }) });
+                showCustomAlert('เปลี่ยนรหัสผ่านสำเร็จแล้ว!', 'บันทึกสำเร็จ');
+                event.target.reset();
+                showView('dashboard-view', 'nav-home');
+            } catch (err) {
+                showCustomAlert(err.message, 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+            }
+        }
+
+        function filterCharacters() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const cards = document.querySelectorAll('.char-card');
+            let found = false;
+            cards.forEach(card => {
+                if (card.getAttribute('data-name').toLowerCase().includes(query)) { card.style.display = ''; found = true; }
+                else { card.style.display = 'none'; }
+            });
+            document.getElementById('search-empty').classList.toggle('hidden', found || query === '');
+        }
+
+        function openCreateCharMode() {
+            editingCard = null;
+            document.getElementById('create-char-form').reset();
+            document.querySelector('#avatar-preview i').classList.remove('hidden');
+            document.getElementById('avatar-img').classList.add('hidden');
+            document.getElementById('avatar-vid').classList.add('hidden');
+            uploadMediaUrl = '';
+            document.getElementById('create-char-title').innerText = 'สร้างตัวละครใหม่ (Custom Character)';
+            document.getElementById('create-char-subtitle').innerText = 'กำหนดบุคลิก รูปร่างหน้าตา และตั้งค่าความเป็นส่วนตัว';
+            document.getElementById('submit-char-btn').innerText = 'บันทึกตัวละคร';
+            showView('create-char-view', 'nav-create');
+        }
+
+        function deleteCharacter(event, btnElement) {
+            event.stopPropagation();
+            const iconContainer = document.querySelector('#custom-confirm-modal .fa-triangle-exclamation').parentElement;
+            iconContainer.className = 'w-16 h-16 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner';
+            showCustomConfirm('ข้อมูลประวัติการพูดคุยจะถูกลบไปด้วย คุณต้องการลบตัวละครนี้ใช่หรือไม่?', async () => {
+                const card = btnElement.closest('.char-card');
+                const characterId = card ? card.dataset.characterId : null;
+                if (!characterId) { showCustomAlert('ไม่พบรหัสตัวละคร ไม่สามารถลบได้', 'ลบไม่สำเร็จ'); return; }
+                try {
+                    await apiFetch(`/api/characters/${characterId}`, { method: 'DELETE' });
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
+                    setTimeout(() => card.remove(), 300);
+                    showCustomAlert('ลบตัวละครสำเร็จแล้ว', 'ลบตัวละคร');
+                } catch (err) {
+                    showCustomAlert(err.message, 'ลบตัวละครไม่สำเร็จ');
+                }
+            });
+        }
+
+        function editCharacter(event, btnElement) {
+            event.stopPropagation();
+            const card = btnElement.closest('.char-card');
+            editingCard = card;
+            const name = card.getAttribute('data-name');
+            const desc = card.querySelector('p.text-xs').innerText;
+            const imgSrc = card.querySelector('img') ? card.querySelector('img').src : '';
+            const vidSrc = card.querySelector('video') ? card.querySelector('video').src : '';
+            document.getElementById('charName').value = name;
+            document.getElementById('charPrompt').value = desc;
+            if (vidSrc) {
+                uploadMediaUrl = vidSrc; uploadMediaType = 'video';
+                document.getElementById('avatar-placeholder').classList.add('hidden');
+                document.getElementById('avatar-img').classList.add('hidden');
+                document.getElementById('avatar-vid').src = vidSrc;
+                document.getElementById('avatar-vid').classList.remove('hidden');
+            } else if (imgSrc) {
+                uploadMediaUrl = imgSrc; uploadMediaType = 'image';
+                document.getElementById('avatar-placeholder').classList.add('hidden');
+                document.getElementById('avatar-vid').classList.add('hidden');
+                document.getElementById('avatar-img').src = imgSrc;
+                document.getElementById('avatar-img').classList.remove('hidden');
+            }
+            document.getElementById('create-char-title').innerText = 'แก้ไขตัวละคร (Edit Character)';
+            document.getElementById('create-char-subtitle').innerText = 'อัปเดตข้อมูลบุคลิกและรูปลักษณ์ของตัวละคร';
+            document.getElementById('submit-char-btn').innerText = 'บันทึกการแก้ไข';
+            showView('create-char-view', 'nav-create');
+        }
+
+        async function handleMediaUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const previewUrl = URL.createObjectURL(file);
+            document.getElementById('avatar-placeholder').classList.add('hidden');
+            if (file.type.startsWith('video/')) {
+                uploadMediaType = 'video';
+                document.getElementById('avatar-img').classList.add('hidden');
+                document.getElementById('avatar-vid').src = previewUrl;
+                document.getElementById('avatar-vid').classList.remove('hidden');
+            } else {
+                uploadMediaType = 'image';
+                document.getElementById('avatar-vid').classList.add('hidden');
+                document.getElementById('avatar-img').src = previewUrl;
+                document.getElementById('avatar-img').classList.remove('hidden');
+            }
+            isUploadingMedia = true;
+            const submitBtn = document.getElementById('submit-char-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'กำลังอัปโหลด...';
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const token = localStorage.getItem('token');
+                const response = await fetch(API_BASE_URL + '/api/uploads', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
+                uploadMediaUrl = resolveMediaUrl(data.url);
+            } catch (err) {
+                showCustomAlert(err.message, 'อัปโหลดไม่สำเร็จ');
+                uploadMediaUrl = '';
+            } finally {
+                isUploadingMedia = false;
+                submitBtn.disabled = false;
+                submitBtn.innerText = editingCard ? 'บันทึกการแก้ไข' : 'บันทึกตัวละคร';
+            }
+        }
+
+        function generateRandomAvatar() {
+            const seed = Math.random().toString(36).substring(7);
+            uploadMediaUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+            uploadMediaType = 'image';
+            document.getElementById('avatar-placeholder').classList.add('hidden');
+            document.getElementById('avatar-vid').classList.add('hidden');
+            document.getElementById('avatar-img').src = uploadMediaUrl;
+            document.getElementById('avatar-img').classList.remove('hidden');
+        }
+
+        async function saveCharacter(event) {
+            event.preventDefault();
+            if (isUploadingMedia) { showCustomAlert('กรุณารอให้อัปโหลดไฟล์เสร็จก่อนครับ', 'กำลังอัปโหลด'); return; }
+            const name = document.getElementById('charName').value;
+            const personality = document.getElementById('charPrompt').value;
+            const isShared = document.querySelector('input[name="privacy"]:checked').value === 'public';
+            if (!uploadMediaUrl) generateRandomAvatar();
+            const avatarUrl = uploadMediaUrl.startsWith('blob:') ? null : uploadMediaUrl;
+            try {
+                const characterId = editingCard ? editingCard.dataset.characterId : null;
+                if (characterId) {
+                    await apiFetch(`/api/characters/${characterId}`, { method: 'PUT', body: JSON.stringify({ name, personality, avatar_url: avatarUrl, is_shared: isShared }) });
+                    showCustomAlert(`อัปเดตข้อมูลตัวละคร "${name}" สำเร็จแล้ว!`, 'อัปเดตข้อมูล');
+                } else {
+                    await apiFetch('/api/characters', { method: 'POST', body: JSON.stringify({ name, personality, avatar_url: avatarUrl, is_shared: isShared }) });
+                    showCustomAlert(`สร้างตัวละคร "${name}" สำเร็จแล้ว!`, 'สร้างตัวละคร');
+                }
+                await loadDashboardCharacters();
+                openCreateCharMode();
+                showView('dashboard-view', 'nav-home');
+            } catch (err) {
+                showCustomAlert(err.message, 'บันทึกตัวละครไม่สำเร็จ');
+            }
+        }
+
+        function renderChatMessage(senderType, text, avatarUrl, mediaType) {
+            const msgContainer = document.getElementById('chat-messages');
+            if (senderType === 'user') {
+                msgContainer.insertAdjacentHTML('beforeend', `<div class="flex items-end space-x-3 self-end max-w-[85%] animate-fade-in mt-4"><div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-br-none shadow-md text-sm">${text}</div></div>`);
+            } else {
+                let avatarHTML = mediaType === 'video'
+                    ? `<video class="absolute inset-0 w-full h-full object-cover" src="${avatarUrl}" autoplay loop muted playsinline></video>`
+                    : `<img class="absolute inset-0 w-full h-full object-cover ${avatarUrl.includes('dicebear') ? 'p-1' : ''}" src="${avatarUrl}">`;
+                msgContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex items-end space-x-3 self-start max-w-[85%] animate-fade-in mt-4">
+                        <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative flex-shrink-0 bg-white">${avatarHTML}</div>
+                        <div class="bg-white text-slate-800 p-4 rounded-2xl rounded-bl-none shadow-md text-sm border border-slate-100"><p>${text}</p></div>
+                    </div>`);
+            }
+        }
+
+        async function enterChatRoom(characterId, name, url, type = 'image') {
+            if (!Number.isInteger(characterId)) { showCustomAlert('ตัวละครนี้ยังไม่ได้เชื่อมกับระบบจริง กรุณาสร้างตัวละครใหม่แทนครับ', 'ใช้งานไม่ได้'); return; }
+            currentChatCharacterId = characterId;
+            currentChatCharName = name;
+            chatActiveMediaUrl = url;
+            chatActiveMediaType = type;
+            showView('chat-view', '');
+            hasChattedInCurrentSession = false;
+            document.getElementById('chat-name-tag').innerText = currentChatCharName;
+            const bgImg = document.getElementById('chat-bg-image');
+            const bgVid = document.getElementById('chat-bg-video');
+            const hdrImg = document.getElementById('chat-header-img');
+            const hdrVid = document.getElementById('chat-header-vid');
+            if (chatActiveMediaType === 'video') {
+                bgImg.classList.add('hidden'); bgVid.src = chatActiveMediaUrl; bgVid.classList.remove('hidden');
+                hdrImg.classList.add('hidden'); hdrVid.src = chatActiveMediaUrl; hdrVid.classList.remove('hidden');
+            } else {
+                bgVid.classList.add('hidden'); bgImg.src = chatActiveMediaUrl; bgImg.classList.remove('hidden');
+                hdrVid.classList.add('hidden'); hdrImg.src = chatActiveMediaUrl; hdrImg.classList.remove('hidden');
+            }
+            const msgContainer = document.getElementById('chat-messages');
+            msgContainer.innerHTML = '';
+            try {
+                const history = await apiFetch(`/api/characters/${characterId}/chats`);
+                if (history.length === 0) {
+                    renderChatMessage('ai', 'สวัสดีค่ะ วันนี้เป็นยังไงบ้างคะ? เล่าให้ฉันฟังได้นะ 😊', chatActiveMediaUrl, chatActiveMediaType);
+                } else {
+                    history.forEach(chat => renderChatMessage(chat.sender_type, chat.message, chatActiveMediaUrl, chatActiveMediaType));
+                    hasChattedInCurrentSession = true;
+                }
+                const scrollArea = document.getElementById('chat-history');
+                scrollArea.scrollTop = scrollArea.scrollHeight;
+            } catch (err) {
+                showCustomAlert(err.message, 'โหลดประวัติการสนทนาไม่สำเร็จ');
+            }
+        }
+
+        async function sendMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            renderChatMessage('user', text, chatActiveMediaUrl, chatActiveMediaType);
+            input.value = '';
+            const scrollArea = document.getElementById('chat-history');
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+            try {
+                const data = await apiFetch(`/api/characters/${currentChatCharacterId}/chats`, { method: 'POST', body: JSON.stringify({ message: text }) });
+                hasChattedInCurrentSession = true;
+                renderChatMessage('ai', data.ai_message.message, chatActiveMediaUrl, chatActiveMediaType);
+                document.getElementById('user-coin-balance').innerText = data.coin_balance.toLocaleString();
+                scrollArea.scrollTop = scrollArea.scrollHeight;
+            } catch (err) {
+                showCustomAlert(err.message, 'ส่งข้อความไม่สำเร็จ');
+            }
+        }
+
+        function showReviewModal() {
+            document.getElementById('review-rating-val').value = 0;
+            document.getElementById('review-comment').value = '';
+            setReviewRating(0);
+            document.getElementById('review-modal').classList.remove('hidden');
+        }
+        function closeReviewModal() { document.getElementById('review-modal').classList.add('hidden'); }
+        function setReviewRating(rating) {
+            document.getElementById('review-rating-val').value = rating;
+            const stars = document.getElementById('review-stars').children;
+            for (let i = 0; i < stars.length; i++) stars[i].classList.toggle('active', i < rating);
+        }
+        async function submitReview(event) {
+            event.preventDefault();
+            const rating = parseInt(document.getElementById('review-rating-val').value);
+            const comment = document.getElementById('review-comment').value.trim();
+            if (rating < 1) { showCustomAlert('กรุณาเลือกจำนวนดาวก่อนส่งรีวิวครับ', 'ยังไม่ได้ให้คะแนน'); return; }
+            try {
+                await apiFetch(`/api/characters/${currentChatCharacterId}/reviews`, { method: 'POST', body: JSON.stringify({ rating, comment: comment || null }) });
+                closeReviewModal();
+                showCustomAlert('ขอบคุณสำหรับรีวิวครับ!', 'ส่งรีวิวสำเร็จ');
+            } catch (err) {
+                showCustomAlert(err.message, 'ส่งรีวิวไม่สำเร็จ');
+            }
+        }
+
+        function showReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
+        function closeReportModal() { document.getElementById('report-modal').classList.add('hidden'); }
+        async function submitReport(event) {
+            event.preventDefault();
+            const details = document.getElementById('report-details').value.trim();
+            if (!details) return;
+            try {
+                await apiFetch(`/api/characters/${currentChatCharacterId}/reports`, { method: 'POST', body: JSON.stringify({ details }) });
+                closeReportModal();
+                showCustomAlert('แอดมินได้รับรายงานของคุณแล้ว เราจะดำเนินการตรวจสอบตัวละคร ' + currentChatCharName + ' โดยเร็วที่สุดครับ', 'ส่งรายงานสำเร็จ');
+                event.target.reset();
+            } catch (err) {
+                closeReportModal();
+                showCustomAlert(err.message, 'ส่งรายงานไม่สำเร็จ');
+            }
+        }
+
+        function generateDiary() {
+            if (!currentChatCharacterId) return;
+            apiFetch(`/api/characters/${currentChatCharacterId}/diary`, { method: 'POST' }).catch(err => console.error('สร้างบันทึกประจำวันไม่สำเร็จ:', err));
+        }
+
+        function showPostEmotion() {
+            if (hasChattedInCurrentSession) {
+                generateDiary();
+                document.getElementById('post-emotion-modal').classList.remove('hidden');
+            } else {
+                showView('dashboard-view', 'nav-home');
+            }
+        }
+        function submitEmotion(emotionText) { document.getElementById('post-emotion-modal').classList.add('hidden'); showQuestionnaire(); }
+        function skipEmotion() { document.getElementById('post-emotion-modal').classList.add('hidden'); showQuestionnaire(); }
+        function showQuestionnaire() {
+            document.getElementById('survey-char-name').innerText = currentChatCharName;
+            for (let i = 1; i <= 10; i++) rateStar(i, 0);
+            document.getElementById('survey-form').scrollTop = 0;
+            document.getElementById('post-questionnaire-modal').classList.remove('hidden');
+        }
+        function rateStar(questionNumber, rating) {
+            const stars = document.getElementById('survey-stars-' + questionNumber).children;
+            const starIcons = stars[1].children;
+            for (let i = 0; i < starIcons.length; i++) {
+                if (i < rating) starIcons[i].classList.add('active'); else starIcons[i].classList.remove('active');
+            }
+            document.getElementById('rating-val-' + questionNumber).value = rating;
+        }
+        function submitQuestionnaire(event) {
+            event.preventDefault();
+            for (let i = 1; i <= 10; i++) {
+                if (document.getElementById('rating-val-' + i).value == 0) {
+                    showCustomAlert("กรุณาให้คะแนนดาวให้ครบทั้ง 10 ข้อ ก่อนกดยืนยันครับ", "ข้อมูลไม่ครบถ้วน");
+                    document.getElementById('survey-stars-' + i).scrollIntoView({ behavior: "smooth", block: "center" });
+                    return;
+                }
+            }
+            document.getElementById('post-questionnaire-modal').classList.add('hidden');
+            showCustomAlert('ขอบคุณสำหรับข้อมูลเพื่อช่วยเราพัฒนา AI ให้ดียิ่งขึ้นครับ', 'ส่งแบบประเมินสำเร็จ!');
+            showView('dashboard-view', 'nav-home');
+        }
+        function skipQuestionnaire() { document.getElementById('post-questionnaire-modal').classList.add('hidden'); showView('dashboard-view', 'nav-home'); }
+
+        function showDailyRewardModal() { document.getElementById('daily-reward-modal').classList.remove('hidden'); }
+        function closeDailyRewardModal() { document.getElementById('daily-reward-modal').classList.add('hidden'); }
+        async function claimDailyReward() {
+            try {
+                const result = await apiFetch('/api/activities/1/claim', { method: 'POST' });
+                document.getElementById('user-coin-balance').innerText = result.new_balance.toLocaleString();
+                document.getElementById('daily-login-banner').classList.add('hidden');
+                closeDailyRewardModal();
+                showCustomAlert(`รับ ${result.reward_coin} เหรียญเข้ากระเป๋าเรียบร้อย!`, 'รับรางวัลแล้ว');
+            } catch (err) {
+                closeDailyRewardModal();
+                showCustomAlert(err.message, 'รับรางวัลไม่สำเร็จ');
+            }
+        }
+
+        function openPaymentModal(coins, price, name) {
+            pendingPaymentCoins = coins; pendingPaymentPrice = price; pendingPackageName = name;
+            document.getElementById('pay-package-name').innerText = `${name} (${coins} เหรียญ)`;
+            document.getElementById('pay-price').innerText = price;
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+        function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); }
+        function confirmPayment(event) {
+            event.preventDefault();
+            closePaymentModal();
+            showCustomAlert('ระบบเติมเงินจริงยังอยู่ระหว่างการพัฒนา (ยังไม่ตัดเงินจริง) ขออภัยในความไม่สะดวกครับ', 'ยังไม่พร้อมใช้งาน');
+        }
+    </script>
+</body>
+</html>
