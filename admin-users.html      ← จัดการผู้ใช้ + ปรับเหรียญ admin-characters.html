@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตัวละคร - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div id="admin-nav-container"></div>
+
+    <div class="max-w-6xl mx-auto p-6">
+        <h2 class="text-xl font-bold text-slate-800 mb-6">จัดการตัวละครทั้งระบบ</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">ชื่อตัวละคร</th>
+                            <th class="px-4 py-3">เจ้าของ</th>
+                            <th class="px-4 py-3">สถานะ</th>
+                            <th class="px-4 py-3">ยอดใช้งาน</th>
+                            <th class="px-4 py-3">คะแนน</th>
+                            <th class="px-4 py-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="characters-table-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-shared.js"></script>
+    <script>
+        const user = requireAdminAuth();
+        if (user) {
+            renderAdminNav('characters', user.username);
+            loadCharacters();
+        }
+
+        async function loadCharacters() {
+            try {
+                const chars = await apiFetch('/api/admin/characters');
+                const tbody = document.getElementById('characters-table-body');
+                tbody.innerHTML = chars.map(c => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-slate-400">${c.character_id}</td>
+                        <td class="px-4 py-3 font-bold text-slate-800">${c.name}</td>
+                        <td class="px-4 py-3 text-slate-600">${c.owner_name}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${c.is_shared ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">${c.is_shared ? 'สาธารณะ' : 'ส่วนตัว'}</span></td>
+                        <td class="px-4 py-3">${c.usage_count}</td>
+                        <td class="px-4 py-3"><i class="fa-solid fa-star text-amber-400 mr-1"></i>${Number(c.rating).toFixed(1)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="deleteCharacterAdmin(${c.character_id}, '${c.name.replace(/'/g, "\\'")}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-trash mr-1"></i>ลบ</button>
+                        </td>
+                    </tr>`).join('');
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+
+        async function deleteCharacterAdmin(id, name) {
+            if (!confirm(`ยืนยันลบตัวละคร "${name}" ใช่หรือไม่? ข้อมูลจะหายถาวร`)) return;
+            try {
+                await apiFetch(`/api/admin/characters/${id}`, { method: 'DELETE' });
+                loadCharacters();
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+    </script>
+</body>
+</html>

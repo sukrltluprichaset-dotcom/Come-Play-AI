@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ผู้ใช้งาน - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div id="admin-nav-container"></div>
+
+    <div class="max-w-6xl mx-auto p-6">
+        <h2 class="text-xl font-bold text-slate-800 mb-6">จัดการผู้ใช้งาน</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">ชื่อผู้ใช้</th>
+                            <th class="px-4 py-3">อีเมล</th>
+                            <th class="px-4 py-3">สิทธิ์</th>
+                            <th class="px-4 py-3">ยอดเหรียญ</th>
+                            <th class="px-4 py-3">สมัครเมื่อ</th>
+                            <th class="px-4 py-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADJUST COINS MODAL -->
+    <div id="coins-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">ปรับยอดเหรียญ</h3>
+            <p class="text-sm text-slate-500 mb-4">ผู้ใช้: <span id="coins-modal-username" class="font-bold text-indigo-600"></span></p>
+            <label class="block text-sm font-bold text-slate-700 mb-2">จำนวนเหรียญ (ใส่ค่าลบเพื่อหักออก)</label>
+            <input type="number" id="coins-amount-input" placeholder="เช่น 100 หรือ -50" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 mb-4">
+            <div class="flex space-x-3">
+                <button onclick="closeCoinsModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg transition">ยกเลิก</button>
+                <button onclick="submitAdjustCoins()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg transition">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-shared.js"></script>
+    <script>
+        const user = requireAdminAuth();
+        let adjustingUserId = null;
+
+        if (user) {
+            renderAdminNav('users', user.username);
+            loadUsers();
+        }
+
+        async function loadUsers() {
+            try {
+                const users = await apiFetch('/api/admin/users');
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = users.map(u => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-slate-400">${u.user_id}</td>
+                        <td class="px-4 py-3 font-bold text-slate-800">${u.username}</td>
+                        <td class="px-4 py-3 text-slate-600">${u.email}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}">${u.role}</span></td>
+                        <td class="px-4 py-3 font-bold text-amber-600"><i class="fa-solid fa-coins mr-1"></i>${u.balance}</td>
+                        <td class="px-4 py-3 text-slate-400 text-xs">${new Date(u.created_at).toLocaleDateString('th-TH')}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="openCoinsModal(${u.user_id}, '${u.username.replace(/'/g, "\\'")}')" class="bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold text-xs px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-coins mr-1"></i>ปรับเหรียญ</button>
+                        </td>
+                    </tr>`).join('');
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+
+        function openCoinsModal(userId, username) {
+            adjustingUserId = userId;
+            document.getElementById('coins-modal-username').innerText = username;
+            document.getElementById('coins-amount-input').value = '';
+            document.getElementById('coins-modal').classList.remove('hidden');
+        }
+        function closeCoinsModal() {
+            document.getElementById('coins-modal').classList.add('hidden');
+            adjustingUserId = null;
+        }
+        async function submitAdjustCoins() {
+            const amount = parseInt(document.getElementById('coins-amount-input').value);
+            if (!amount) { adminAlert('กรุณาใส่จำนวนเหรียญที่ไม่เป็นศูนย์'); return; }
+            try {
+                const result = await apiFetch(`/api/admin/users/${adjustingUserId}/coins`, { method: 'PUT', body: JSON.stringify({ amount }) });
+                closeCoinsModal();
+                adminAlert(`ปรับยอดสำเร็จ ยอดใหม่คือ ${result.new_balance} เหรียญ`);
+                loadUsers();
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+    </script>
+</body>
+</html>

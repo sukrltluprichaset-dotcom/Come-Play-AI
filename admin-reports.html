@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายงาน - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div id="admin-nav-container"></div>
+
+    <div class="max-w-6xl mx-auto p-6">
+        <h2 class="text-xl font-bold text-slate-800 mb-6">รายงานตัวละคร</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">ตัวละครที่ถูกรายงาน</th>
+                            <th class="px-4 py-3">ผู้รายงาน</th>
+                            <th class="px-4 py-3">รายละเอียด</th>
+                            <th class="px-4 py-3">สถานะ</th>
+                            <th class="px-4 py-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-table-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-shared.js"></script>
+    <script>
+        const user = requireAdminAuth();
+        if (user) {
+            renderAdminNav('reports', user.username);
+            loadReports();
+        }
+
+        async function loadReports() {
+            try {
+                const reports = await apiFetch('/api/admin/reports');
+                const tbody = document.getElementById('reports-table-body');
+                if (reports.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">ไม่มีรายงานในระบบ</td></tr>';
+                    return;
+                }
+                const statusBadge = { pending: 'bg-amber-100 text-amber-700', resolved: 'bg-emerald-100 text-emerald-700', rejected: 'bg-slate-100 text-slate-600' };
+                tbody.innerHTML = reports.map(r => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 font-bold text-slate-800">${r.character_name}</td>
+                        <td class="px-4 py-3 text-slate-600">${r.username}</td>
+                        <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${r.details}">${r.details}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${statusBadge[r.status] || 'bg-slate-100'}">${r.status}</span></td>
+                        <td class="px-4 py-3 text-center space-x-1">
+                            ${r.status === 'pending' ? `
+                                <button onclick="updateReport(${r.report_id}, 'resolved')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs px-2 py-1.5 rounded-lg transition">แก้ไขแล้ว</button>
+                                <button onclick="updateReport(${r.report_id}, 'rejected')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs px-2 py-1.5 rounded-lg transition">ไม่ดำเนินการ</button>
+                            ` : '<span class="text-slate-300 text-xs">-</span>'}
+                        </td>
+                    </tr>`).join('');
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+
+        async function updateReport(id, status) {
+            try {
+                await apiFetch(`/api/admin/reports/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+                loadReports();
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+    </script>
+</body>
+</html>

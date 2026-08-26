@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบผู้ดูแล - Come Play AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-950 p-4">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-indigo-600 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-4">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
+                <p class="text-slate-500 text-sm mt-1">Come Play AI — สำหรับผู้ดูแลระบบเท่านั้น</p>
+            </div>
+            <form onsubmit="adminLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">อีเมล</label>
+                    <input type="text" id="admin-email" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">รหัสผ่าน</label>
+                    <input type="password" id="admin-password" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition">เข้าสู่ระบบผู้ดูแล</button>
+            </form>
+            <p id="admin-login-error" class="hidden text-red-500 text-sm text-center mt-4"></p>
+        </div>
+    </div>
+
+    <script src="admin-shared.js"></script>
+    <script>
+        // ถ้าล็อกอินเป็น admin ค้างอยู่แล้ว ข้ามไปหน้า dashboard เลย ไม่ต้อง login ซ้ำ
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            if (token && user && user.role === 'admin') {
+                window.location.href = 'admin-dashboard.html';
+            }
+        });
+
+        async function adminLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            const errEl = document.getElementById('admin-login-error');
+            errEl.classList.add('hidden');
+            try {
+                const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+                if (data.user.role !== 'admin') {
+                    errEl.innerText = 'บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลระบบ';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = 'admin-dashboard.html';
+            } catch (err) {
+                errEl.innerText = err.message;
+                errEl.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
