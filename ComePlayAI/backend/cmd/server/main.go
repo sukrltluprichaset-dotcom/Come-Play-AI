@@ -90,6 +90,15 @@ func main() {
 	mux.Handle("POST /api/characters/{id}/diary", authMW(http.HandlerFunc(diaryHandler.Generate)))
 	mux.Handle("GET /api/diaries", authMW(http.HandlerFunc(diaryHandler.List)))
 
+	adminHandler := handlers.NewAdminHandler(db)
+	mux.Handle("GET /api/admin/users", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListUsers))))
+	mux.Handle("PUT /api/admin/users/{id}/coins", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.AdjustCoins))))
+	mux.Handle("GET /api/admin/characters", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListAllCharacters))))
+	mux.Handle("DELETE /api/admin/characters/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteCharacter))))
+	mux.Handle("GET /api/admin/reports", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListReports))))
+	mux.Handle("PUT /api/admin/reports/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.UpdateReportStatus))))
+	mux.Handle("GET /api/admin/stats", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.Stats))))
+
 	addr := ":" + cfg.AppPort
 	log.Printf("เซิร์ฟเวอร์เริ่มทำงานที่ http://localhost%s\n", addr)
 	log.Fatal(http.ListenAndServe(addr, middleware.EnableCORS(mux)))
