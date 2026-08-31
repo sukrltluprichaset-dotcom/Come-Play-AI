@@ -1,25 +1,31 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
-const (
-	maxUploadSize = 20 << 20 // 20 MB
-	uploadDir     = "uploads"
-)
+const maxUploadSize = 20 << 20 // 20 MB
 
-type UploadHandler struct{}
+type UploadHandler struct {
+	SupabaseURL        string
+	SupabaseServiceKey string
+	SupabaseBucket     string
+	HTTPClient         *http.Client
+}
 
-func NewUploadHandler() *UploadHandler {
-	os.MkdirAll(uploadDir, 0755)
-	return &UploadHandler{}
+func NewUploadHandler(supabaseURL, serviceKey, bucket string) *UploadHandler {
+	return &UploadHandler{
+		SupabaseURL:        supabaseURL,
+		SupabaseServiceKey: serviceKey,
+		SupabaseBucket:     bucket,
+		HTTPClient:         &http.Client{Timeout: 30 * time.Second},
+	}
 }
 
 func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
@@ -47,20 +53,39 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	dstPath := filepath.Join(uploadDir, filename)
-
-	dst, err := os.Create(dstPath)
+	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกไฟล์ไม่สำเร็จ")
-		return
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกไฟล์ไม่สำเร็จ")
+		writeError(w, http.StatusInternalServerError, "อ่านไฟล์ไม่สำเร็จ")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"url": "/uploads/" + filename})
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+
+	// อัปโหลดไปยัง Supabase Storage ผ่าน REST API โดยตรง
+	uploadURL := fmt.Sprintf("%s/storage/v1/object/%s/%s", h.SupabaseURL, h.SupabaseBucket, filename)
+
+	req, err := http.NewRequest(http.MethodPost, uploadURL, bytes.NewReader(fileBytes))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "สร้าง request ไม่สำเร็จ")
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+h.SupabaseServiceKey)
+	req.Header.Set("Content-Type", header.Header.Get("Content-Type"))
+
+	resp, err := h.HTTPClient.Do(req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "อัปโหลดไฟล์ไม่สำเร็จ")
+		return
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("อัปโหลดไฟล์ไม่สำเร็จ (status %d): %s", resp.StatusCode, string(respBody)))
+		return
+	}
+
+	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", h.SupabaseURL, h.SupabaseBucket, filename)
+
+	writeJSON(w, http.StatusOK, map[string]string{"url": publicURL})
 }

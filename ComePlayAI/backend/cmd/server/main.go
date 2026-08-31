@@ -70,7 +70,7 @@ func main() {
 	mux.Handle("POST /api/characters/{id}/reports", authMW(http.HandlerFunc(reportHandler.Create)))
 	evaluationHandler := handlers.NewEvaluationHandler(db)
 	mux.Handle("POST /api/evaluations", authMW(http.HandlerFunc(evaluationHandler.Submit)))
-	uploadHandler := handlers.NewUploadHandler()
+	uploadHandler := handlers.NewUploadHandler(cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SupabaseBucket)
 	mux.Handle("POST /api/uploads", authMW(http.HandlerFunc(uploadHandler.Upload)))
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 
