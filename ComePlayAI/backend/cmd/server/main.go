@@ -99,6 +99,11 @@ func main() {
 	mux.Handle("PUT /api/admin/reports/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.UpdateReportStatus))))
 	mux.Handle("GET /api/admin/stats", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.Stats))))
 
+	paymentHandler := handlers.NewPaymentHandler(db)
+	mux.HandleFunc("GET /api/packages", paymentHandler.ListPackages)
+	mux.Handle("POST /api/payments", authMW(http.HandlerFunc(paymentHandler.CreatePayment)))
+	mux.Handle("GET /api/payments", authMW(http.HandlerFunc(paymentHandler.ListMyPayments)))
+
 	addr := ":" + cfg.AppPort
 	log.Printf("เซิร์ฟเวอร์เริ่มทำงานที่ http://localhost%s\n", addr)
 	log.Fatal(http.ListenAndServe(addr, middleware.EnableCORS(mux)))
