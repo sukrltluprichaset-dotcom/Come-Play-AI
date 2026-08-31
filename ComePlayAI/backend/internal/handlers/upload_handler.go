@@ -69,7 +69,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "สร้าง request ไม่สำเร็จ")
 		return
 	}
-	req.Header.Set("Authorization", "Bearer "+h.SupabaseServiceKey)
+	req.Header.Set("apikey", h.SupabaseServiceKey)
 	req.Header.Set("Content-Type", header.Header.Get("Content-Type"))
 
 	resp, err := h.HTTPClient.Do(req)
