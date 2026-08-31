@@ -83,11 +83,11 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 	var payment models.Payment
 	err = tx.QueryRow(
-		`INSERT INTO payments (user_id, method, amount, package_name, coin_amount)
-		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING payment_id, user_id, method, amount, package_name, coin_amount, created_at`,
-		userID, req.Method, price, pkgName, coinAmount,
-	).Scan(&payment.PaymentID, &payment.UserID, &payment.Method, &payment.Amount, &payment.PackageName, &payment.CoinAmount, &payment.CreatedAt)
+		`INSERT INTO payments (user_id, package_id, payment_method, amount, status, package_name, coin_amount, payment_time)
+		 VALUES ($1, $2, $3, $4, 'success', $5, $6, NOW())
+		 RETURNING payment_id, user_id, package_id, payment_method, amount, status, package_name, coin_amount, payment_time`,
+		userID, req.PackageID, req.Method, price, pkgName, coinAmount,
+	).Scan(&payment.PaymentID, &payment.UserID, &payment.PackageID, &payment.PaymentMethod, &payment.Amount, &payment.Status, &payment.PackageName, &payment.CoinAmount, &payment.PaymentTime)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "บันทึกรายการชำระเงินไม่สำเร็จ")
 		return
@@ -120,8 +120,8 @@ func (h *PaymentHandler) ListMyPayments(w http.ResponseWriter, r *http.Request) 
 	userID := userIDFromContext(r)
 
 	rows, err := h.DB.Query(
-		`SELECT payment_id, user_id, method, amount, package_name, coin_amount, created_at
-		 FROM payments WHERE user_id = $1 ORDER BY created_at DESC`,
+		`SELECT payment_id, user_id, package_id, payment_method, amount, status, package_name, coin_amount, payment_time
+		 FROM payments WHERE user_id = $1 ORDER BY payment_time DESC`,
 		userID,
 	)
 	if err != nil {
@@ -133,7 +133,7 @@ func (h *PaymentHandler) ListMyPayments(w http.ResponseWriter, r *http.Request) 
 	payments := []models.Payment{}
 	for rows.Next() {
 		var p models.Payment
-		if err := rows.Scan(&p.PaymentID, &p.UserID, &p.Method, &p.Amount, &p.PackageName, &p.CoinAmount, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.PaymentID, &p.UserID, &p.PackageID, &p.PaymentMethod, &p.Amount, &p.Status, &p.PackageName, &p.CoinAmount, &p.PaymentTime); err != nil {
 			writeError(w, http.StatusInternalServerError, "โหลดประวัติทำรายการไม่สำเร็จ")
 			return
 		}
