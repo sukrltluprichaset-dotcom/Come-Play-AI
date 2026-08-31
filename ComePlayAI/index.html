@@ -280,8 +280,9 @@
                                 <thead class="bg-slate-100/50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
                                     <tr><th class="px-6 py-4">รหัสรายการ</th><th class="px-6 py-4">วัน-เวลา</th><th class="px-6 py-4">รายการ/แพ็กเกจ</th><th class="px-6 py-4 text-right">ยอดชำระ (บาท)</th><th class="px-6 py-4 text-center">สถานะ</th></tr>
                                 </thead>
-                                <tbody id="transaction-list" class="divide-y divide-slate-100">
-                                    <tr class="hover:bg-slate-50 transition"><td class="px-6 py-4 text-center text-slate-400" colspan="5">ยังไม่มีประวัติทำรายการ (ระบบเติมเงินยังอยู่ระหว่างการพัฒนา)</td></tr>
+                                                                <tbody id="transaction-list" class="divide-y divide-slate-100"></tbody>
+                                <tbody id="transaction-empty-row" class="hidden">
+                                    <tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ยังไม่มีประวัติทำรายการ</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -374,25 +375,7 @@
                             <div class="text-right bg-black/30 backdrop-blur border border-white/10 px-6 py-3 rounded-xl"><p class="text-xs text-indigo-300 font-bold mb-1">ยอดเงินคงเหลือของคุณ</p><div class="flex items-center text-3xl font-black text-yellow-400"><i class="fa-solid fa-coins mr-3"></i><span id="store-coin-display">0</span></div></div>
                         </div>
                     </div>
-                    <div class="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl p-4 mb-6"><i class="fa-solid fa-circle-info mr-2"></i> ระบบเติมเงินจริงยังอยู่ระหว่างการพัฒนา ตอนนี้เป็นการสาธิตหน้าตาเท่านั้น (ยังไม่ตัดเงินจริง)</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition flex flex-col">
-                            <div class="p-6 text-center border-b border-slate-100 flex-1"><div class="w-16 h-16 bg-yellow-50 text-yellow-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-coins"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจเริ่มต้น</h4><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">100 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
-                            <div class="p-4 bg-slate-50"><button onclick="openPaymentModal(100, 29, 'แพ็กเกจเริ่มต้น')" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ 29.00</button></div>
-                        </div>
-                        <div class="bg-white rounded-2xl shadow-xl border-2 border-orange-400 overflow-hidden hover:shadow-2xl transition relative flex flex-col">
-                            <div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">ยอดนิยม</div>
-                            <div class="p-6 text-center border-b border-slate-100 flex-1 bg-gradient-to-b from-orange-50/50 to-white"><div class="w-20 h-20 bg-gradient-to-br from-yellow-300 to-orange-500 text-white rounded-full mx-auto flex items-center justify-center text-4xl mb-4 shadow-lg"><i class="fa-solid fa-sack-dollar"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจคุ้มค่า</h4><p class="text-sm text-orange-600 font-bold mt-2">+ รับโบนัสฟรี 50 เหรียญ!</p><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">550 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
-                            <div class="p-4 bg-orange-50"><button onclick="openPaymentModal(550, 129, 'แพ็กเกจคุ้มค่า')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 rounded-xl shadow-md transition">฿ 129.00</button></div>
-                        </div>
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition flex flex-col">
-                            <div class="p-6 text-center border-b border-slate-100 flex-1"><div class="w-16 h-16 bg-purple-50 text-purple-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-gem"></i></div><h4 class="text-xl font-bold text-slate-800">แพ็กเกจพรีเมียม</h4><p class="text-sm text-purple-600 font-bold mt-2">+ รับโบนัสฟรี 200 เหรียญ!</p><div class="mt-6 mb-2 text-4xl font-black text-indigo-600">1,200 <span class="text-lg font-bold text-slate-500">เหรียญ</span></div></div>
-                            <div class="p-4 bg-slate-50"><button onclick="openPaymentModal(1200, 249, 'แพ็กเกจพรีเมียม')" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ 249.00</button></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                                       <div id="packages-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
             <div id="chat-view" class="view-section flex-1 relative hidden h-full">
                 <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
                     <img id="chat-bg-image" src="" class="absolute inset-0 w-full h-full object-cover hidden">
@@ -772,10 +755,52 @@
             }
         }
 
-        function loadProfileInfo() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            document.getElementById('profile-username').value = user.username || '';
-            document.getElementById('profile-email').value = user.email || '';
+       
+        async function loadPackages() {
+            try {
+                const packages = await apiFetch('/api/packages');
+                const grid = document.getElementById('packages-grid');
+                const badges = [
+                    { icon: 'fa-coins', color: 'yellow', border: 'border-slate-200', bg: 'bg-slate-50' },
+                    { icon: 'fa-sack-dollar', color: 'orange', border: 'border-2 border-orange-400', bg: 'bg-orange-50', popular: true },
+                    { icon: 'fa-gem', color: 'purple', border: 'border-slate-200', bg: 'bg-slate-50' },
+                ];
+                grid.innerHTML = packages.map((pkg, i) => {
+                    const style = badges[i] || badges[0];
+                    return `
+                        <div class="bg-white rounded-2xl shadow-sm ${style.border} overflow-hidden hover:shadow-lg transition flex flex-col relative">
+                            ${style.popular ? '<div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">ยอดนิยม</div>' : ''}
+                            <div class="p-6 text-center border-b border-slate-100 flex-1">
+                                <div class="w-16 h-16 bg-${style.color}-50 text-${style.color}-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid ${style.icon}"></i></div>
+                                <h4 class="text-xl font-bold text-slate-800">${pkg.name}</h4>
+                                <div class="mt-6 mb-2 text-4xl font-black text-indigo-600">${pkg.coin_amount.toLocaleString()} <span class="text-lg font-bold text-slate-500">เหรียญ</span></div>
+                            </div>
+                            <div class="p-4 ${style.bg}">
+                                <button onclick="openPaymentModal(${pkg.package_id}, '${pkg.name.replace(/'/g, "\\'")}', ${pkg.price})" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ ${Number(pkg.price).toFixed(2)}</button>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (err) {
+                console.error('โหลดแพ็กเกจไม่สำเร็จ:', err);
+            }
+        }
+
+        async function loadPaymentHistory() {
+            try {
+                const payments = await apiFetch('/api/payments');
+                const tbody = document.getElementById('transaction-list');
+                document.getElementById('transaction-empty-row').classList.toggle('hidden', payments.length > 0);
+                tbody.innerHTML = payments.map(p => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-6 py-4 font-mono text-xs text-slate-400">#${p.payment_id}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600">${new Date(p.payment_time).toLocaleString('th-TH')}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-slate-800">${p.package_name} (+${p.coin_amount} เหรียญ)</td>
+                        <td class="px-6 py-4 text-right font-bold text-slate-800">${Number(p.amount).toFixed(2)}</td>
+                        <td class="px-6 py-4 text-center"><span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">${p.status === 'success' ? 'สำเร็จ' : p.status}</span></td>
+                    </tr>`).join('');
+            } catch (err) {
+                console.error('โหลดประวัติทำรายการไม่สำเร็จ:', err);
+            }
         }
 
         let currentChatCharacterId = null;
@@ -917,7 +942,11 @@
                 document.getElementById(navId).classList.add('bg-indigo-800', 'text-white', 'shadow-inner');
                 document.getElementById(navId).classList.remove('text-indigo-200', 'hover:bg-indigo-800');
             }
-            if (viewId === 'topup-view') document.getElementById('store-coin-display').innerText = document.getElementById('user-coin-balance').innerText;
+            if (viewId === 'topup-view') {
+                document.getElementById('store-coin-display').innerText = document.getElementById('user-coin-balance').innerText;
+                loadPackages();
+            }
+            if (viewId === 'history-view') loadPaymentHistory();
             if (viewId === 'ranking-view') loadRankingList();
             if (viewId === 'diary-view') loadDiaryList();
             if (viewId === 'studio-view') loadStudioStats();
@@ -1275,17 +1304,31 @@
             }
         }
 
-        function openPaymentModal(coins, price, name) {
-            pendingPaymentCoins = coins; pendingPaymentPrice = price; pendingPackageName = name;
-            document.getElementById('pay-package-name').innerText = `${name} (${coins} เหรียญ)`;
-            document.getElementById('pay-price').innerText = price;
+               let pendingPackageId = null;
+
+        function openPaymentModal(packageId, name, price) {
+            pendingPackageId = packageId;
+            document.getElementById('pay-package-name').innerText = name;
+            document.getElementById('pay-price').innerText = Number(price).toFixed(2);
             document.getElementById('payment-modal').classList.remove('hidden');
         }
         function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); }
-        function confirmPayment(event) {
+
+        async function confirmPayment(event) {
             event.preventDefault();
-            closePaymentModal();
-            showCustomAlert('ระบบเติมเงินจริงยังอยู่ระหว่างการพัฒนา (ยังไม่ตัดเงินจริง) ขออภัยในความไม่สะดวกครับ', 'ยังไม่พร้อมใช้งาน');
+            const method = document.querySelector('input[name="payment_method"]:checked').value;
+            try {
+                const result = await apiFetch('/api/payments', {
+                    method: 'POST',
+                    body: JSON.stringify({ package_id: pendingPackageId, method }),
+                });
+                closePaymentModal();
+                document.getElementById('user-coin-balance').innerText = result.new_balance.toLocaleString();
+                showCustomAlert(`เติม ${result.payment.coin_amount} เหรียญสำเร็จ! (${result.payment.package_name})`, 'ทำรายการสำเร็จ');
+            } catch (err) {
+                closePaymentModal();
+                showCustomAlert(err.message, 'ทำรายการไม่สำเร็จ');
+            }
         }
     </script>
 </body>
