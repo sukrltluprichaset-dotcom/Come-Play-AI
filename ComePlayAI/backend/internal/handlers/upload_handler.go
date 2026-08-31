@@ -70,6 +70,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Header.Set("apikey", h.SupabaseServiceKey)
+	req.Header.Set("Authorization", "Bearer "+h.SupabaseServiceKey)
 	req.Header.Set("Content-Type", header.Header.Get("Content-Type"))
 
 	resp, err := h.HTTPClient.Do(req)
