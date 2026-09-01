@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	"comeplayai-backend/internal/config"
 	"comeplayai-backend/internal/database"
@@ -35,9 +36,9 @@ func main() {
 			"supabase_url_length": len(cfg.SupabaseURL),
 			"service_key_length":  len(cfg.SupabaseServiceKey),
 			"bucket":              cfg.SupabaseBucket,
+			"testvar":             os.Getenv("TESTVAR"),
 		})
 	})
-
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		count, err := database.PackageCount(db)
