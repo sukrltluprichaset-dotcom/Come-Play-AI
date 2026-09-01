@@ -27,6 +27,15 @@ func main() {
 	log.Printf("เชื่อมต่อฐานข้อมูล %q สำเร็จ\n", cfg.DBName)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/debug-env", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"supabase_url":        cfg.SupabaseURL,
+			"supabase_url_length": len(cfg.SupabaseURL),
+			"service_key_length":  len(cfg.SupabaseServiceKey),
+			"bucket":              cfg.SupabaseBucket,
+		})
+	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
