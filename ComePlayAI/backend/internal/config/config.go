@@ -35,8 +35,8 @@ func Load() (*Config, error) {
 		DBSSLMode:          getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:          getEnv("JWT_SECRET", "dev-secret-change-me-in-production"),
 		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
-		SupabaseURL:        getEnv("https://dgdashzusbhnpluwimji.supabase.co", ""),
-		SupabaseServiceKey: getEnv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnZGFzaHp1c2JobnBsdXdpbWppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzU3ODc2MCwiZXhwIjoyMTAzMTU0NzYwfQ.XJPKUOMmMudTCjwZooLLOwdzVa3RPRQaJmKJJenXC7k", ""),
+		SupabaseURL:        getEnv("SUPABASE_URL", "https://dgdashzusbhnpluwimji.supabase.co"),
+		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", "sb_secret_e3FYVVSwtKXitvJ8MMaIYg_w7SP6Y24"),
 		SupabaseBucket:     getEnv("SUPABASE_BUCKET", "avatars"),
 	}
 

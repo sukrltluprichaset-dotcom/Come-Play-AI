@@ -28,6 +28,7 @@ func main() {
 	log.Printf("เชื่อมต่อฐานข้อมูล %q สำเร็จ\n", cfg.DBName)
 
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/debug-env", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -39,6 +40,7 @@ func main() {
 			"testvar":             os.Getenv("TESTVAR"),
 		})
 	})
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		count, err := database.PackageCount(db)
