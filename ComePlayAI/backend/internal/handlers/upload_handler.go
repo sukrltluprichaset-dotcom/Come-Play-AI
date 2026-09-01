@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -61,6 +62,8 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 
+	log.Printf("กำลังอัปโหลดไปที่ Supabase: URL=%s, Bucket=%s, KeyLength=%d", h.SupabaseURL, h.SupabaseBucket, len(h.SupabaseServiceKey))
+
 	// อัปโหลดไปยัง Supabase Storage ผ่าน REST API โดยตรง
 	uploadURL := fmt.Sprintf("%s/storage/v1/object/%s/%s", h.SupabaseURL, h.SupabaseBucket, filename)
 
@@ -75,6 +78,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.HTTPClient.Do(req)
 	if err != nil {
+		log.Printf("Supabase Storage เชื่อมต่อไม่สำเร็จ: %v (URL ที่ใช้: %s)", err, uploadURL)
 		writeError(w, http.StatusInternalServerError, "อัปโหลดไฟล์ไม่สำเร็จ")
 		return
 	}
@@ -82,6 +86,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("Supabase Storage ตอบกลับ error (status %d): %s", resp.StatusCode, string(respBody))
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("อัปโหลดไฟล์ไม่สำเร็จ (status %d): %s", resp.StatusCode, string(respBody)))
 		return
 	}
