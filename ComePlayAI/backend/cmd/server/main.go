@@ -30,6 +30,7 @@ func main() {
 	mux.HandleFunc("/debug-env", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
+			"db_host":             cfg.DBHost,
 			"supabase_url":        cfg.SupabaseURL,
 			"supabase_url_length": len(cfg.SupabaseURL),
 			"service_key_length":  len(cfg.SupabaseServiceKey),
