@@ -413,6 +413,43 @@
                     </div>
                 </div>
             </div>
+                        <div id="chat-view" class="view-section flex-1 relative hidden h-full">
+                <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
+                    <img id="chat-bg-image" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                    <video id="chat-bg-video" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
+                </div>
+                <div class="absolute inset-0 bg-slate-900/50 z-0"></div>
+                <div class="relative z-10 flex flex-col h-full w-full">
+                    <div class="shrink-0 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="showPostEmotion()" class="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="ออกจากการสนทนา"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative bg-slate-100">
+                                    <img id="chat-header-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                                    <video id="chat-header-vid" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
+                                </div>
+                                <div><h3 id="chat-name-tag" class="font-bold text-slate-800 leading-tight">Name</h3><div class="flex items-center text-xs text-green-500 font-medium"><span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span> ออนไลน์</div></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
+                            <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
+                        </div>
+                    </div>
+                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col scroll-smooth">
+                        <div class="flex-1 min-h-[20px]"></div>
+                        <div id="chat-messages" class="space-y-6 flex flex-col w-full mt-auto pb-2"></div>
+                    </div>
+                    <div class="shrink-0 bg-white p-4 border-t border-slate-200 w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
+                        <form onsubmit="sendMessage(event)" class="max-w-5xl mx-auto flex items-end space-x-3">
+                            <div class="flex-1 bg-slate-100 border border-slate-200 focus-within:border-indigo-400 focus-within:bg-white rounded-2xl overflow-hidden flex items-end transition-colors">
+                                <textarea id="chat-input" rows="1" placeholder="พิมพ์ข้อความพูดคุย..." class="w-full bg-transparent text-slate-800 px-5 py-3.5 outline-none resize-none max-h-32 text-sm md:text-base"></textarea>
+                            </div>
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
