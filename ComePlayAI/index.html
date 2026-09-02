@@ -280,10 +280,8 @@
                                 <thead class="bg-slate-100/50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
                                     <tr><th class="px-6 py-4">รหัสรายการ</th><th class="px-6 py-4">วัน-เวลา</th><th class="px-6 py-4">รายการ/แพ็กเกจ</th><th class="px-6 py-4 text-right">ยอดชำระ (บาท)</th><th class="px-6 py-4 text-center">สถานะ</th></tr>
                                 </thead>
-                                                                <tbody id="transaction-list" class="divide-y divide-slate-100"></tbody>
-                                <tbody id="transaction-empty-row" class="hidden">
-                                    <tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ยังไม่มีประวัติทำรายการ</td></tr>
-                                </tbody>
+                                <tbody id="transaction-list" class="divide-y divide-slate-100"></tbody>
+                                <tbody id="transaction-empty-row" class="hidden"><tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ยังไม่มีประวัติทำรายการ</td></tr></tbody>
                             </table>
                         </div>
                     </div>
@@ -375,73 +373,18 @@
                             <div class="text-right bg-black/30 backdrop-blur border border-white/10 px-6 py-3 rounded-xl"><p class="text-xs text-indigo-300 font-bold mb-1">ยอดเงินคงเหลือของคุณ</p><div class="flex items-center text-3xl font-black text-yellow-400"><i class="fa-solid fa-coins mr-3"></i><span id="store-coin-display">0</span></div></div>
                         </div>
                     </div>
-                                       <div id="packages-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-                  
-                <div class="absolute inset-0 bg-slate-900/50 z-0"></div>
-                <div class="relative z-10 flex flex-col h-full w-full">
-                    <div class="shrink-0 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
-                        <div class="flex items-center space-x-4">
-                            <button onclick="showPostEmotion()" class="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="ออกจากการสนทนา"><i class="fa-solid fa-arrow-left text-lg"></i></button>
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative bg-slate-100">
-                                    <img id="chat-header-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                                    <video id="chat-header-vid" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
-                                </div>
-                                <div><h3 id="chat-name-tag" class="font-bold text-slate-800 leading-tight">Name</h3><div class="flex items-center text-xs text-green-500 font-medium"><span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span> ออนไลน์</div></div>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
-                            <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
-                        </div>
-                    </div>
-                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col scroll-smooth">
-                        <div class="flex-1 min-h-[20px]"></div>
-                        <div id="chat-messages" class="space-y-6 flex flex-col w-full mt-auto pb-2"></div>
-                    </div>
-                    <div class="shrink-0 bg-white p-4 border-t border-slate-200 w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
-                        <form onsubmit="sendMessage(event)" class="max-w-5xl mx-auto flex items-end space-x-3">
-                            <div class="flex-1 bg-slate-100 border border-slate-200 focus-within:border-indigo-400 focus-within:bg-white rounded-2xl overflow-hidden flex items-end transition-colors">
-                                <textarea id="chat-input" rows="1" placeholder="พิมพ์ข้อความพูดคุย..." class="w-full bg-transparent text-slate-800 px-5 py-3.5 outline-none resize-none max-h-32 text-sm md:text-base"></textarea>
-                            </div>
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
-                        </form>
+                    <div class="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl p-4 mb-6"><i class="fa-solid fa-circle-info mr-2"></i> ระบบเติมเงินจริงยังอยู่ระหว่างการพัฒนา ตอนนี้เป็นการสาธิตหน้าตาเท่านั้น (ยังไม่ตัดเงินจริง)</div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div id="packages-grid" class="contents"></div>
                     </div>
                 </div>
             </div>
-                <div class="absolute inset-0 bg-slate-900/50 z-0"></div>
-                <div class="relative z-10 flex flex-col h-full w-full">
-                    <div class="shrink-0 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
-                        <div class="flex items-center space-x-4">
-                            <button onclick="showPostEmotion()" class="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="ออกจากการสนทนา"><i class="fa-solid fa-arrow-left text-lg"></i></button>
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative bg-slate-100">
-                                    <img id="chat-header-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                                    <video id="chat-header-vid" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
-                                </div>
-                                <div><h3 id="chat-name-tag" class="font-bold text-slate-800 leading-tight">Name</h3><div class="flex items-center text-xs text-green-500 font-medium"><span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span> ออนไลน์</div></div>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
-                            <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
-                        </div>
-                    </div>
-                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col scroll-smooth">
-                        <div class="flex-1 min-h-[20px]"></div>
-                        <div id="chat-messages" class="space-y-6 flex flex-col w-full mt-auto pb-2"></div>
-                    </div>
-                    <div class="shrink-0 bg-white p-4 border-t border-slate-200 w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
-                        <form onsubmit="sendMessage(event)" class="max-w-5xl mx-auto flex items-end space-x-3">
-                            <div class="flex-1 bg-slate-100 border border-slate-200 focus-within:border-indigo-400 focus-within:bg-white rounded-2xl overflow-hidden flex items-end transition-colors">
-                                <textarea id="chat-input" rows="1" placeholder="พิมพ์ข้อความพูดคุย..." class="w-full bg-transparent text-slate-800 px-5 py-3.5 outline-none resize-none max-h-32 text-sm md:text-base"></textarea>
-                            </div>
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
-                        </form>
-                    </div>
+
+            <div id="chat-view" class="view-section flex-1 relative hidden h-full">
+                <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
+                    <img id="chat-bg-image" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                    <video id="chat-bg-video" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
                 </div>
-            </div>
-                      
                 <div class="absolute inset-0 bg-slate-900/50 z-0"></div>
                 <div class="relative z-10 flex flex-col h-full w-full">
                     <div class="shrink-0 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
@@ -475,11 +418,6 @@
                 </div>
             </div>
         </main>
-          <div id="chat-view" class="view-section flex-1 relative hidden h-full">
-                <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
-                    <img id="chat-bg-image" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                    <video id="chat-bg-video" src="" class="absolute inset-0 w-full h-full object-cover hidden" autoplay loop muted playsinline></video>
-                </div>
     </div>
 
     <div id="custom-alert-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
@@ -620,7 +558,7 @@
     </div>
 
     <script>
-                const API_BASE_URL = 'https://come-play-ai-1.onrender.com';
+        const API_BASE_URL = 'https://come-play-ai-1.onrender.com';
 
         function isVideoFile(url) {
             if (!url) return false;
@@ -821,34 +759,39 @@
             }
         }
 
-       
+        function loadProfileInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            document.getElementById('profile-username').value = user.username || '';
+            document.getElementById('profile-email').value = user.email || '';
+        }
+
+        let pendingPackageId = null;
+
         async function loadPackages() {
             try {
                 const packages = await apiFetch('/api/packages');
                 const grid = document.getElementById('packages-grid');
-                const badges = [
-                    { icon: 'fa-coins', color: 'yellow', border: 'border-slate-200', bg: 'bg-slate-50' },
+                const styles = [
+                    { icon: 'fa-coins', color: 'yellow', border: 'border border-slate-200', bg: 'bg-slate-50' },
                     { icon: 'fa-sack-dollar', color: 'orange', border: 'border-2 border-orange-400', bg: 'bg-orange-50', popular: true },
-                    { icon: 'fa-gem', color: 'purple', border: 'border-slate-200', bg: 'bg-slate-50' },
+                    { icon: 'fa-gem', color: 'purple', border: 'border border-slate-200', bg: 'bg-slate-50' },
                 ];
                 grid.innerHTML = packages.map((pkg, i) => {
-                    const style = badges[i] || badges[0];
+                    const s = styles[i] || styles[0];
                     return `
-                        <div class="bg-white rounded-2xl shadow-sm ${style.border} overflow-hidden hover:shadow-lg transition flex flex-col relative">
-                            ${style.popular ? '<div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">ยอดนิยม</div>' : ''}
+                        <div class="bg-white rounded-2xl shadow-sm ${s.border} overflow-hidden hover:shadow-lg transition flex flex-col relative">
+                            ${s.popular ? '<div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">ยอดนิยม</div>' : ''}
                             <div class="p-6 text-center border-b border-slate-100 flex-1">
-                                <div class="w-16 h-16 bg-${style.color}-50 text-${style.color}-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid ${style.icon}"></i></div>
+                                <div class="w-16 h-16 bg-${s.color}-50 text-${s.color}-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid ${s.icon}"></i></div>
                                 <h4 class="text-xl font-bold text-slate-800">${pkg.name}</h4>
                                 <div class="mt-6 mb-2 text-4xl font-black text-indigo-600">${pkg.coin_amount.toLocaleString()} <span class="text-lg font-bold text-slate-500">เหรียญ</span></div>
                             </div>
-                            <div class="p-4 ${style.bg}">
+                            <div class="p-4 ${s.bg}">
                                 <button onclick="openPaymentModal(${pkg.package_id}, '${pkg.name.replace(/'/g, "\\'")}', ${pkg.price})" class="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-bold py-3 rounded-xl transition">฿ ${Number(pkg.price).toFixed(2)}</button>
                             </div>
                         </div>`;
                 }).join('');
-            } catch (err) {
-                console.error('โหลดแพ็กเกจไม่สำเร็จ:', err);
-            }
+            } catch (err) { console.error('โหลดแพ็กเกจไม่สำเร็จ:', err); }
         }
 
         async function loadPaymentHistory() {
@@ -864,9 +807,7 @@
                         <td class="px-6 py-4 text-right font-bold text-slate-800">${Number(p.amount).toFixed(2)}</td>
                         <td class="px-6 py-4 text-center"><span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">${p.status === 'success' ? 'สำเร็จ' : p.status}</span></td>
                     </tr>`).join('');
-            } catch (err) {
-                console.error('โหลดประวัติทำรายการไม่สำเร็จ:', err);
-            }
+            } catch (err) { console.error('โหลดประวัติทำรายการไม่สำเร็จ:', err); }
         }
 
         let currentChatCharacterId = null;
@@ -1008,10 +949,7 @@
                 document.getElementById(navId).classList.add('bg-indigo-800', 'text-white', 'shadow-inner');
                 document.getElementById(navId).classList.remove('text-indigo-200', 'hover:bg-indigo-800');
             }
-            if (viewId === 'topup-view') {
-                document.getElementById('store-coin-display').innerText = document.getElementById('user-coin-balance').innerText;
-                loadPackages();
-            }
+            if (viewId === 'topup-view') { document.getElementById('store-coin-display').innerText = document.getElementById('user-coin-balance').innerText; loadPackages(); }
             if (viewId === 'history-view') loadPaymentHistory();
             if (viewId === 'ranking-view') loadRankingList();
             if (viewId === 'diary-view') loadDiaryList();
@@ -1370,8 +1308,6 @@
             }
         }
 
-               let pendingPackageId = null;
-
         function openPaymentModal(packageId, name, price) {
             pendingPackageId = packageId;
             document.getElementById('pay-package-name').innerText = name;
@@ -1379,15 +1315,11 @@
             document.getElementById('payment-modal').classList.remove('hidden');
         }
         function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); }
-
         async function confirmPayment(event) {
             event.preventDefault();
             const method = document.querySelector('input[name="payment_method"]:checked').value;
             try {
-                const result = await apiFetch('/api/payments', {
-                    method: 'POST',
-                    body: JSON.stringify({ package_id: pendingPackageId, method }),
-                });
+                const result = await apiFetch('/api/payments', { method: 'POST', body: JSON.stringify({ package_id: pendingPackageId, method }) });
                 closePaymentModal();
                 document.getElementById('user-coin-balance').innerText = result.new_balance.toLocaleString();
                 showCustomAlert(`เติม ${result.payment.coin_amount} เหรียญสำเร็จ! (${result.payment.package_name})`, 'ทำรายการสำเร็จ');
