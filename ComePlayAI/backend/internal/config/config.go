@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 		JWTSecret:          getEnv("JWT_SECRET", "dev-secret-change-me-in-production"),
 		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
 		SupabaseURL:        getEnv("SUPABASE_URL", "https://dgdashzusbhnpluwimji.supabase.co"),
-		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", "sb_secret_e3FYVVSwtKXitvJ8MMaIYg_w7SP6Y24"),
+		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 		SupabaseBucket:     getEnv("SUPABASE_BUCKET", "avatars"),
 	}
 
