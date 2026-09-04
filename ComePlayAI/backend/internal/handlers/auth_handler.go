@@ -137,11 +137,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	var passwordHash string
+	var isSuspended bool
 	err := h.DB.QueryRow(
-		`SELECT user_id, username, email, password, role, created_at
+		`SELECT user_id, username, email, password, role, created_at, is_suspended
 		 FROM users WHERE email = $1 OR username = $1`,
 		req.Email,
-	).Scan(&user.UserID, &user.Username, &user.Email, &passwordHash, &user.Role, &user.CreatedAt)
+	).Scan(&user.UserID, &user.Username, &user.Email, &passwordHash, &user.Role, &user.CreatedAt, &isSuspended)
 
 	if err == sql.ErrNoRows {
 		writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
@@ -153,6 +154,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if !auth.CheckPassword(req.Password, passwordHash) {
 		writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
+		return
+	}
+
+	if isSuspended {
+		writeError(w, http.StatusForbidden, "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ")
 		return
 	}
 

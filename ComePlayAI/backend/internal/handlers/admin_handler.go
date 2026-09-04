@@ -60,6 +60,72 @@ type adjustCoinsRequest struct {
 	Amount int `json:"amount"` // ใส่ค่าบวกเพื่อเติม ใส่ค่าลบเพื่อหัก
 }
 
+// ----- ระงับ/ยกเลิกระงับบัญชีผู้ใช้ -----
+
+type suspendUserRequest struct {
+	Suspended bool `json:"suspended"`
+}
+
+func (h *AdminHandler) SuspendUser(w http.ResponseWriter, r *http.Request) {
+	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
+		return
+	}
+
+	var req suspendUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+		return
+	}
+
+	result, err := h.DB.Exec(`UPDATE users SET is_suspended = $1 WHERE user_id = $2`, req.Suspended, targetUserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
+		return
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		writeError(w, http.StatusNotFound, "ไม่พบผู้ใช้นี้")
+		return
+	}
+
+	message := "ระงับบัญชีสำเร็จ"
+	if !req.Suspended {
+		message = "ยกเลิกการระงับบัญชีสำเร็จ"
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": message})
+}
+
+// ----- ลบบัญชีผู้ใช้ถาวร -----
+
+func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
+		return
+	}
+
+	adminID := userIDFromContext(r)
+	if adminID == targetUserID {
+		writeError(w, http.StatusBadRequest, "ไม่สามารถลบบัญชีของตัวเองได้")
+		return
+	}
+
+	result, err := h.DB.Exec(`DELETE FROM users WHERE user_id = $1`, targetUserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ลบบัญชีไม่สำเร็จ (อาจมีข้อมูลเชื่อมโยงอยู่)")
+		return
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		writeError(w, http.StatusNotFound, "ไม่พบผู้ใช้นี้")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "ลบบัญชีผู้ใช้สำเร็จ"})
+}
+
 func (h *AdminHandler) AdjustCoins(w http.ResponseWriter, r *http.Request) {
 	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

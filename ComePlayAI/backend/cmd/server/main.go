@@ -92,7 +92,8 @@ func main() {
 
 	adminHandler := handlers.NewAdminHandler(db)
 	mux.Handle("GET /api/admin/users", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListUsers))))
-	mux.Handle("PUT /api/admin/users/{id}/coins", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.AdjustCoins))))
+	mux.Handle("PUT /api/admin/users/{id}/suspend", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.SuspendUser))))
+	mux.Handle("DELETE /api/admin/users/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteUser))))
 	mux.Handle("GET /api/admin/characters", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListAllCharacters))))
 	mux.Handle("DELETE /api/admin/characters/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteCharacter))))
 	mux.Handle("GET /api/admin/reports", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListReports))))
