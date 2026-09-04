@@ -19,16 +19,16 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
-                        <tr>
-                            <th class="px-4 py-3">ID</th>
-                            <th class="px-4 py-3">ชื่อผู้ใช้</th>
-                            <th class="px-4 py-3">อีเมล</th>
-                            <th class="px-4 py-3">สิทธิ์</th>
-                            <th class="px-4 py-3">ยอดเหรียญ</th>
-                            <th class="px-4 py-3">สมัครเมื่อ</th>
-                            <th class="px-4 py-3 text-center">จัดการ</th>
-                        </tr>
-                    </thead>
+                            <tr>
+                                <th class="px-4 py-3">ID</th>
+                                <th class="px-4 py-3">ชื่อผู้ใช้</th>
+                                <th class="px-4 py-3">อีเมล</th>
+                                <th class="px-4 py-3">สิทธิ์</th>
+                                <th class="px-4 py-3">ยอดเหรียญ</th>
+                                <th class="px-4 py-3">สถานะ</th>
+                                <th class="px-4 py-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
                     <tbody id="users-table-body" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
@@ -59,27 +59,58 @@
             loadUsers();
         }
 
-        async function loadUsers() {
+               async function loadUsers() {
             try {
                 const users = await apiFetch('/api/admin/users');
                 const tbody = document.getElementById('users-table-body');
-                tbody.innerHTML = users.map(u => `
+                tbody.innerHTML = users.map(u => {
+                    const safeName = u.username.replace(/'/g, "\\'");
+                    return `
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3 text-slate-400">${u.user_id}</td>
                         <td class="px-4 py-3 font-bold text-slate-800">${u.username}</td>
                         <td class="px-4 py-3 text-slate-600">${u.email}</td>
                         <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}">${u.role}</span></td>
                         <td class="px-4 py-3 font-bold text-amber-600"><i class="fa-solid fa-coins mr-1"></i>${u.balance}</td>
-                        <td class="px-4 py-3 text-slate-400 text-xs">${new Date(u.created_at).toLocaleDateString('th-TH')}</td>
-                        <td class="px-4 py-3 text-center">
-                            <button onclick="openCoinsModal(${u.user_id}, '${u.username.replace(/'/g, "\\'")}')" class="bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold text-xs px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-coins mr-1"></i>ปรับเหรียญ</button>
+                        <td class="px-4 py-3">
+                            ${u.is_suspended
+                                ? '<span class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">ถูกระงับ</span>'
+                                : '<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700">ปกติ</span>'}
                         </td>
-                    </tr>`).join('');
+                        <td class="px-4 py-3 text-center space-x-1">
+                            <button onclick="openCoinsModal(${u.user_id}, '${safeName}')" class="bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold text-xs px-2 py-1.5 rounded-lg transition"><i class="fa-solid fa-coins"></i></button>
+                            <button onclick="toggleSuspend(${u.user_id}, ${!u.is_suspended}, '${safeName}')" class="${u.is_suspended ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600' : 'bg-orange-50 hover:bg-orange-100 text-orange-600'} font-bold text-xs px-2 py-1.5 rounded-lg transition">
+                                <i class="fa-solid ${u.is_suspended ? 'fa-unlock' : 'fa-ban'}"></i>
+                            </button>
+                            <button onclick="deleteUserAdmin(${u.user_id}, '${safeName}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-2 py-1.5 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('');
             } catch (err) {
                 adminAlert(err.message);
             }
         }
 
+        async function toggleSuspend(userId, suspend, username) {
+            const action = suspend ? 'ระงับ' : 'ยกเลิกระงับ';
+            if (!confirm(`ยืนยัน${action}บัญชี "${username}" ใช่หรือไม่?`)) return;
+            try {
+                await apiFetch(`/api/admin/users/${userId}/suspend`, { method: 'PUT', body: JSON.stringify({ suspended: suspend }) });
+                loadUsers();
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
+
+        async function deleteUserAdmin(userId, username) {
+            if (!confirm(`ยืนยันลบบัญชี "${username}" ถาวรใช่หรือไม่? ข้อมูลทั้งหมดจะหายและกู้คืนไม่ได้`)) return;
+            try {
+                await apiFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+                loadUsers();
+            } catch (err) {
+                adminAlert(err.message);
+            }
+        }
         function openCoinsModal(userId, username) {
             adjustingUserId = userId;
             document.getElementById('coins-modal-username').innerText = username;
