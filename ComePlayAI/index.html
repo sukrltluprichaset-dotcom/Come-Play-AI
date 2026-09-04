@@ -1278,18 +1278,43 @@
             }
             document.getElementById('rating-val-' + questionNumber).value = rating;
         }
-        function submitQuestionnaire(event) {
+              const evaluationQuestions = [
+            'คลายความเหงา/ความโดดเดี่ยว',
+            'ช่วยผ่อนคลายความเครียด',
+            'ได้รับพลังงานบวก/กำลังใจ',
+            'AI ตอบคำถามได้เป็นธรรมชาติ',
+            'บุคลิกภาพ AI ตรงตามคาดหวัง',
+            'AI จดจำบริบทได้แม่นยำ (RAG)',
+            'AI ใช้คำพูดเหมาะสม',
+            'พึงพอใจความเร็วของระบบ',
+            'อินเทอร์เฟซช่วยให้อินกับการสนทนา',
+            'ภาพรวม จะแนะนำให้เพื่อนใช้',
+        ];
+
+        async function submitQuestionnaire(event) {
             event.preventDefault();
+            const answers = [];
             for (let i = 1; i <= 10; i++) {
-                if (document.getElementById('rating-val-' + i).value == 0) {
+                const val = parseInt(document.getElementById('rating-val-' + i).value);
+                if (val === 0) {
                     showCustomAlert("กรุณาให้คะแนนดาวให้ครบทั้ง 10 ข้อ ก่อนกดยืนยันครับ", "ข้อมูลไม่ครบถ้วน");
                     document.getElementById('survey-stars-' + i).scrollIntoView({ behavior: "smooth", block: "center" });
                     return;
                 }
+                answers.push({ question: evaluationQuestions[i - 1], answer: val });
             }
-            document.getElementById('post-questionnaire-modal').classList.add('hidden');
-            showCustomAlert('ขอบคุณสำหรับข้อมูลเพื่อช่วยเราพัฒนา AI ให้ดียิ่งขึ้นครับ', 'ส่งแบบประเมินสำเร็จ!');
-            showView('dashboard-view', 'nav-home');
+
+            try {
+                await apiFetch('/api/evaluations', {
+                    method: 'POST',
+                    body: JSON.stringify({ answers }),
+                });
+                document.getElementById('post-questionnaire-modal').classList.add('hidden');
+                showCustomAlert('ขอบคุณสำหรับข้อมูลเพื่อช่วยเราพัฒนา AI ให้ดียิ่งขึ้นครับ', 'ส่งแบบประเมินสำเร็จ!');
+                showView('dashboard-view', 'nav-home');
+            } catch (err) {
+                showCustomAlert(err.message, 'ส่งแบบประเมินไม่สำเร็จ');
+            }
         }
         function skipQuestionnaire() { document.getElementById('post-questionnaire-modal').classList.add('hidden'); showView('dashboard-view', 'nav-home'); }
 
