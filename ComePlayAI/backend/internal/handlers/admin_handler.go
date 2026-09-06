@@ -20,17 +20,18 @@ func NewAdminHandler(db *sql.DB) *AdminHandler {
 // ----- ดูรายชื่อผู้ใช้ทั้งหมด -----
 
 type adminUserView struct {
-	UserID    int64  `json:"user_id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"created_at"`
-	Balance   int    `json:"balance"`
+	UserID      int64  `json:"user_id"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	Role        string `json:"role"`
+	CreatedAt   string `json:"created_at"`
+	Balance     int    `json:"balance"`
+	IsSuspended bool   `json:"is_suspended"`
 }
 
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(
-		`SELECT u.user_id, u.username, u.email, u.role, u.created_at, COALESCE(c.balance, 0)
+		`SELECT u.user_id, u.username, u.email, u.role, u.created_at, COALESCE(c.balance, 0), u.is_suspended
 		 FROM users u
 		 LEFT JOIN coins c ON c.user_id = u.user_id
 		 ORDER BY u.user_id ASC`,
@@ -44,7 +45,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users := []adminUserView{}
 	for rows.Next() {
 		var u adminUserView
-		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Role, &u.CreatedAt, &u.Balance); err != nil {
+		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Role, &u.CreatedAt, &u.Balance, &u.IsSuspended); err != nil {
 			writeError(w, http.StatusInternalServerError, "โหลดรายชื่อผู้ใช้ไม่สำเร็จ")
 			return
 		}
