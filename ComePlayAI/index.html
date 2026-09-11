@@ -412,7 +412,7 @@
                             <div class="flex-1 bg-slate-100 border border-slate-200 focus-within:border-indigo-400 focus-within:bg-white rounded-2xl overflow-hidden flex items-end transition-colors">
                                 <textarea id="chat-input" rows="1" placeholder="พิมพ์ข้อความพูดคุย..." class="w-full bg-transparent text-slate-800 px-5 py-3.5 outline-none resize-none max-h-32 text-sm md:text-base"></textarea>
                             </div>
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
+                            <button type="submit" id="chat-send-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 md:w-auto md:px-8 md:py-3.5 rounded-full md:rounded-2xl font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"><i class="fa-solid fa-paper-plane md:mr-2"></i><span class="hidden md:inline">ส่ง</span></button>
                         </form>
                     </div>
                 </div>
@@ -815,6 +815,8 @@
         let chatActiveMediaUrl = '';
         let chatActiveMediaType = 'image';
         let hasChattedInCurrentSession = false;
+        let isSendingChat = false; // กันการยิงส่งข้อความซ้อนกันหลาย request พร้อมกัน
+        let chatMsgCounter = 0;
         let pendingPaymentCoins = 0;
         let pendingPaymentPrice = 0;
         let pendingPackageName = '';
@@ -1133,10 +1135,16 @@
             }
         }
 
-        function renderChatMessage(senderType, text, avatarUrl, mediaType) {
+        function renderChatMessage(senderType, text, avatarUrl, mediaType, msgId = null) {
             const msgContainer = document.getElementById('chat-messages');
             if (senderType === 'user') {
-                msgContainer.insertAdjacentHTML('beforeend', `<div class="flex items-end space-x-3 self-end max-w-[85%] animate-fade-in mt-4"><div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-br-none shadow-md text-sm">${text}</div></div>`);
+                const idAttr = msgId !== null ? ` id="chat-msg-${msgId}"` : '';
+                msgContainer.insertAdjacentHTML('beforeend', `<div${idAttr} class="flex flex-col items-end self-end max-w-[85%] animate-fade-in mt-4">
+                    <div class="flex items-end space-x-3">
+                        <div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-br-none shadow-md text-sm">${text}</div>
+                    </div>
+                    <div class="chat-msg-status hidden text-xs text-red-500 mt-1 mr-1 cursor-pointer hover:underline"></div>
+                </div>`);
             } else {
                 let avatarHTML = mediaType === 'video'
                     ? `<video class="absolute inset-0 w-full h-full object-cover" src="${avatarUrl}" autoplay loop muted playsinline></video>`
@@ -1188,13 +1196,35 @@
 
         async function sendMessage(event) {
             event.preventDefault();
+            // กันกดส่งซ้อนขณะที่ยังรอคำตอบก่อนหน้าอยู่ (ต้นตอที่ทำให้ข้อความก่อนหน้าหายเวลาพิมพ์รัวๆ)
+            if (isSendingChat) return;
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if (!text) return;
-            renderChatMessage('user', text, chatActiveMediaUrl, chatActiveMediaType);
             input.value = '';
+            await doSendChat(text);
+        }
+
+        async function doSendChat(text, retryMsgId = null) {
+            const sendBtn = document.getElementById('chat-send-btn');
+            const input = document.getElementById('chat-input');
             const scrollArea = document.getElementById('chat-history');
+
+            isSendingChat = true;
+            if (sendBtn) sendBtn.disabled = true;
+            if (input) input.disabled = true;
+
+            const msgId = retryMsgId !== null ? retryMsgId : ++chatMsgCounter;
+            const statusEl = () => document.querySelector(`#chat-msg-${msgId} .chat-msg-status`);
+
+            if (retryMsgId === null) {
+                renderChatMessage('user', text, chatActiveMediaUrl, chatActiveMediaType, msgId);
+            } else {
+                const el = statusEl();
+                if (el) { el.classList.add('hidden'); el.innerText = ''; el.onclick = null; }
+            }
             scrollArea.scrollTop = scrollArea.scrollHeight;
+
             try {
                 const data = await apiFetch(`/api/characters/${currentChatCharacterId}/chats`, { method: 'POST', body: JSON.stringify({ message: text }) });
                 hasChattedInCurrentSession = true;
@@ -1202,7 +1232,19 @@
                 document.getElementById('user-coin-balance').innerText = data.coin_balance.toLocaleString();
                 scrollArea.scrollTop = scrollArea.scrollHeight;
             } catch (err) {
+                // แสดง alert เหมือนเดิม แต่เพิ่มการทำเครื่องหมายที่ข้อความจริงๆ ด้วย
+                // เผื่อผู้ใช้กดออกจากห้องแชทไปก่อนที่จะเห็น alert (จะได้ไม่รู้สึกว่าข้อความ "หายเงียบๆ")
+                const el = statusEl();
+                if (el) {
+                    el.classList.remove('hidden');
+                    el.innerText = 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่';
+                    el.onclick = () => doSendChat(text, msgId);
+                }
                 showCustomAlert(err.message, 'ส่งข้อความไม่สำเร็จ');
+            } finally {
+                isSendingChat = false;
+                if (sendBtn) sendBtn.disabled = false;
+                if (input) input.disabled = false;
             }
         }
 
