@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"database/sql"
-	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/llm"
 	"comeplayai-backend/internal/models"
@@ -20,13 +21,12 @@ func NewDiaryHandler(db *sql.DB, gemini *llm.GeminiClient) *DiaryHandler {
 }
 
 // Generate สรุปบทสนทนา "วันนี้" ของผู้ใช้กับตัวละครนี้ เป็นบันทึกประจำวัน (สร้างใหม่ หรืออัปเดตทับถ้ามีอยู่แล้ว)
-func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *DiaryHandler) Generate(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	var characterName, personality string
@@ -37,15 +37,12 @@ func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		characterID,
 	).Scan(&characterName, &personality, &isShared, &ownerID)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !isShared && ownerID != userID {
-		writeError(w, http.StatusForbidden, "ไม่มีสิทธิ์เข้าถึงตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusForbidden, "ไม่มีสิทธิ์เข้าถึงตัวละครนี้")
 	}
 
 	rows, err := h.DB.Query(
@@ -55,8 +52,7 @@ func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		userID, characterID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดบทสนทนาไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดบทสนทนาไม่สำเร็จ")
 	}
 	var sb strings.Builder
 	count := 0
@@ -64,8 +60,7 @@ func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		var senderType, message string
 		if err := rows.Scan(&senderType, &message); err != nil {
 			rows.Close()
-			writeError(w, http.StatusInternalServerError, "โหลดบทสนทนาไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดบทสนทนาไม่สำเร็จ")
 		}
 		speaker := "ผู้ใช้"
 		if senderType == "ai" {
@@ -77,14 +72,12 @@ func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 
 	if count == 0 {
-		writeError(w, http.StatusBadRequest, "ยังไม่มีบทสนทนาในวันนี้ ไม่สามารถสร้างบันทึกได้")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ยังไม่มีบทสนทนาในวันนี้ ไม่สามารถสร้างบันทึกได้")
 	}
 
 	summary, err := h.Gemini.SummarizeDiary(characterName, personality, sb.String())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "สรุปบันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สรุปบันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
 	}
 
 	var existingID int64
@@ -109,17 +102,16 @@ func (h *DiaryHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		).Scan(&diary.DiaryID, &diary.UserID, &diary.CharacterID, &diary.EntryDate, &diary.Summary, &diary.CreatedAt)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกไดอารี่ไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกไดอารี่ไม่สำเร็จ")
 	}
 	diary.CharacterName = characterName
 
-	writeJSON(w, http.StatusOK, diary)
+	return writeJSON(c, fiber.StatusOK, diary)
 }
 
 // List แสดงบันทึกทั้งหมดของผู้ใช้ (ทุกตัวละคร) เรียงตามวันที่ล่าสุด
-func (h *DiaryHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *DiaryHandler) List(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	rows, err := h.DB.Query(
 		`SELECT d.diary_id, d.user_id, d.character_id, c.name, d.entry_date, d.summary, d.created_at
@@ -130,8 +122,7 @@ func (h *DiaryHandler) List(w http.ResponseWriter, r *http.Request) {
 		userID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดบันทึกไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดบันทึกไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -139,11 +130,10 @@ func (h *DiaryHandler) List(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Diary
 		if err := rows.Scan(&d.DiaryID, &d.UserID, &d.CharacterID, &d.CharacterName, &d.EntryDate, &d.Summary, &d.CreatedAt); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดบันทึกไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดบันทึกไม่สำเร็จ")
 		}
 		diaries = append(diaries, d)
 	}
 
-	writeJSON(w, http.StatusOK, diaries)
+	return writeJSON(c, fiber.StatusOK, diaries)
 }

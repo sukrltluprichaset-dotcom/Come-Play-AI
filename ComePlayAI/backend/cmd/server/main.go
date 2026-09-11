@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
-	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/config"
 	"comeplayai-backend/internal/database"
@@ -26,20 +26,21 @@ func main() {
 
 	log.Printf("เชื่อมต่อฐานข้อมูล %q สำเร็จ\n", cfg.DBName)
 
-	mux := http.NewServeMux()
+	app := fiber.New(fiber.Config{
+		BodyLimit: 20 << 20, // 20 MB (ให้พอสำหรับอัปโหลดรูป/วิดีโอสั้นๆ ใน /api/uploads)
+	})
 
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+	app.Use(middleware.EnableCORS())
+
+	app.Get("/health", func(c *fiber.Ctx) error {
 		count, err := database.PackageCount(db)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":          "error",
 				"database_status": "disconnected",
 			})
-			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		return c.JSON(fiber.Map{
 			"status":          "ok",
 			"database_status": "connected",
 			"package_count":   count,
@@ -49,63 +50,66 @@ func main() {
 	authMW := middleware.RequireAuth(cfg.JWTSecret)
 
 	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret)
-	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
-	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
-	mux.Handle("PUT /api/auth/password", authMW(http.HandlerFunc(authHandler.ChangePassword)))
+	app.Post("/api/auth/register", authHandler.Register)
+	app.Post("/api/auth/login", authHandler.Login)
+	app.Put("/api/auth/password", authMW, authHandler.ChangePassword)
 
 	characterHandler := handlers.NewCharacterHandler(db)
-	mux.Handle("POST /api/characters", authMW(http.HandlerFunc(characterHandler.Create)))
-	mux.Handle("GET /api/characters", authMW(http.HandlerFunc(characterHandler.ListMine)))
-	mux.HandleFunc("GET /api/characters/public", characterHandler.ListPublic)
-	mux.HandleFunc("GET /api/characters/popular", characterHandler.Popular)
-	mux.Handle("GET /api/characters/stats", authMW(http.HandlerFunc(characterHandler.Stats)))
-	mux.Handle("GET /api/characters/{id}", authMW(http.HandlerFunc(characterHandler.Get)))
-	mux.Handle("PUT /api/characters/{id}", authMW(http.HandlerFunc(characterHandler.Update)))
-	mux.Handle("DELETE /api/characters/{id}", authMW(http.HandlerFunc(characterHandler.Delete)))
+	app.Post("/api/characters", authMW, characterHandler.Create)
+	app.Get("/api/characters", authMW, characterHandler.ListMine)
+	app.Get("/api/characters/public", characterHandler.ListPublic)
+	app.Get("/api/characters/popular", characterHandler.Popular)
+	app.Get("/api/characters/stats", authMW, characterHandler.Stats)
+	app.Get("/api/characters/:id", authMW, characterHandler.Get)
+	app.Put("/api/characters/:id", authMW, characterHandler.Update)
+	app.Delete("/api/characters/:id", authMW, characterHandler.Delete)
 
 	reviewHandler := handlers.NewReviewHandler(db)
-	mux.Handle("POST /api/characters/{id}/reviews", authMW(http.HandlerFunc(reviewHandler.CreateOrUpdate)))
-	mux.HandleFunc("GET /api/characters/{id}/reviews", reviewHandler.List)
+	app.Post("/api/characters/:id/reviews", authMW, reviewHandler.CreateOrUpdate)
+	app.Get("/api/characters/:id/reviews", reviewHandler.List)
+
 	reportHandler := handlers.NewReportHandler(db)
-	mux.Handle("POST /api/characters/{id}/reports", authMW(http.HandlerFunc(reportHandler.Create)))
+	app.Post("/api/characters/:id/reports", authMW, reportHandler.Create)
+
 	evaluationHandler := handlers.NewEvaluationHandler(db)
-	mux.Handle("POST /api/evaluations", authMW(http.HandlerFunc(evaluationHandler.Submit)))
+	app.Post("/api/evaluations", authMW, evaluationHandler.Submit)
+
 	uploadHandler := handlers.NewUploadHandler(cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SupabaseBucket)
-	mux.Handle("POST /api/uploads", authMW(http.HandlerFunc(uploadHandler.Upload)))
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+	app.Post("/api/uploads", authMW, uploadHandler.Upload)
+	app.Static("/uploads", "./uploads")
 
 	geminiClient := llm.NewGeminiClient(cfg.GeminiAPIKey)
 	chatHandler := handlers.NewChatHandler(db, geminiClient)
-	mux.Handle("POST /api/characters/{id}/chats", authMW(http.HandlerFunc(chatHandler.SendMessage)))
-	mux.Handle("GET /api/characters/{id}/chats", authMW(http.HandlerFunc(chatHandler.GetHistory)))
+	app.Post("/api/characters/:id/chats", authMW, chatHandler.SendMessage)
+	app.Get("/api/characters/:id/chats", authMW, chatHandler.GetHistory)
 
 	coinHandler := handlers.NewCoinHandler(db)
-	mux.Handle("GET /api/coins", authMW(http.HandlerFunc(coinHandler.GetBalance)))
+	app.Get("/api/coins", authMW, coinHandler.GetBalance)
 
 	activityHandler := handlers.NewActivityHandler(db)
-	mux.HandleFunc("GET /api/activities", activityHandler.List)
-	mux.Handle("POST /api/activities/{id}/claim", authMW(http.HandlerFunc(activityHandler.Claim)))
+	app.Get("/api/activities", activityHandler.List)
+	app.Post("/api/activities/:id/claim", authMW, activityHandler.Claim)
 
 	diaryHandler := handlers.NewDiaryHandler(db, geminiClient)
-	mux.Handle("POST /api/characters/{id}/diary", authMW(http.HandlerFunc(diaryHandler.Generate)))
-	mux.Handle("GET /api/diaries", authMW(http.HandlerFunc(diaryHandler.List)))
+	app.Post("/api/characters/:id/diary", authMW, diaryHandler.Generate)
+	app.Get("/api/diaries", authMW, diaryHandler.List)
 
 	adminHandler := handlers.NewAdminHandler(db)
-	mux.Handle("GET /api/admin/users", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListUsers))))
-	mux.Handle("PUT /api/admin/users/{id}/suspend", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.SuspendUser))))
-	mux.Handle("DELETE /api/admin/users/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteUser))))
-	mux.Handle("GET /api/admin/characters", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListAllCharacters))))
-	mux.Handle("DELETE /api/admin/characters/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteCharacter))))
-	mux.Handle("GET /api/admin/reports", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ListReports))))
-	mux.Handle("PUT /api/admin/reports/{id}", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.UpdateReportStatus))))
-	mux.Handle("GET /api/admin/stats", authMW(middleware.RequireAdmin(http.HandlerFunc(adminHandler.Stats))))
+	app.Get("/api/admin/users", authMW, middleware.RequireAdmin, adminHandler.ListUsers)
+	app.Put("/api/admin/users/:id/suspend", authMW, middleware.RequireAdmin, adminHandler.SuspendUser)
+	app.Delete("/api/admin/users/:id", authMW, middleware.RequireAdmin, adminHandler.DeleteUser)
+	app.Get("/api/admin/characters", authMW, middleware.RequireAdmin, adminHandler.ListAllCharacters)
+	app.Delete("/api/admin/characters/:id", authMW, middleware.RequireAdmin, adminHandler.DeleteCharacter)
+	app.Get("/api/admin/reports", authMW, middleware.RequireAdmin, adminHandler.ListReports)
+	app.Put("/api/admin/reports/:id", authMW, middleware.RequireAdmin, adminHandler.UpdateReportStatus)
+	app.Get("/api/admin/stats", authMW, middleware.RequireAdmin, adminHandler.Stats)
 
 	paymentHandler := handlers.NewPaymentHandler(db)
-	mux.HandleFunc("GET /api/packages", paymentHandler.ListPackages)
-	mux.Handle("POST /api/payments", authMW(http.HandlerFunc(paymentHandler.CreatePayment)))
-	mux.Handle("GET /api/payments", authMW(http.HandlerFunc(paymentHandler.ListMyPayments)))
+	app.Get("/api/packages", paymentHandler.ListPackages)
+	app.Post("/api/payments", authMW, paymentHandler.CreatePayment)
+	app.Get("/api/payments", authMW, paymentHandler.ListMyPayments)
 
 	addr := ":" + cfg.AppPort
 	log.Printf("เซิร์ฟเวอร์เริ่มทำงานที่ http://localhost%s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, middleware.EnableCORS(mux)))
+	log.Fatal(app.Listen(addr))
 }

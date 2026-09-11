@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strings"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -27,34 +27,29 @@ type submitEvaluationRequest struct {
 }
 
 // Submit บันทึกคำตอบแบบประเมินหลายข้อพร้อมกันในครั้งเดียว
-func (h *EvaluationHandler) Submit(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	var req submitEvaluationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	if len(req.Answers) == 0 {
-		writeError(w, http.StatusBadRequest, "กรุณาตอบแบบประเมินให้ครบถ้วน")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กรุณาตอบแบบประเมินให้ครบถ้วน")
 	}
 	for _, a := range req.Answers {
 		if strings.TrimSpace(a.Question) == "" {
-			writeError(w, http.StatusBadRequest, "กรุณากรอกแบบประเมินให้ครบถ้วน")
-			return
+			return writeError(c, fiber.StatusBadRequest, "กรุณากรอกแบบประเมินให้ครบถ้วน")
 		}
 		if a.Answer < 1 || a.Answer > 5 {
-			writeError(w, http.StatusBadRequest, "คะแนนต้องอยู่ระหว่าง 1-5")
-			return
+			return writeError(c, fiber.StatusBadRequest, "คะแนนต้องอยู่ระหว่าง 1-5")
 		}
 	}
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
 
@@ -68,16 +63,14 @@ func (h *EvaluationHandler) Submit(w http.ResponseWriter, r *http.Request) {
 			strings.TrimSpace(a.Question), a.Answer, userID,
 		).Scan(&ev.EvalID, &ev.Question, &ev.Answer, &ev.UserID, &ev.CreatedAt)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
 		}
 		saved = append(saved, ev)
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusCreated, saved)
+	return writeJSON(c, fiber.StatusCreated, saved)
 }

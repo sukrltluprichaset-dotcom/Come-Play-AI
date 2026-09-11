@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -22,35 +22,30 @@ type reportRequest struct {
 	Details string `json:"details"`
 }
 
-func (h *ReportHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *ReportHandler) Create(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	var req reportRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Details = strings.TrimSpace(req.Details)
 	if req.Details == "" {
-		writeError(w, http.StatusBadRequest, "กรุณาระบุรายละเอียดการรายงาน")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กรุณาระบุรายละเอียดการรายงาน")
 	}
 
 	var exists bool
 	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, characterID).Scan(&exists); err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !exists {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	}
 
 	var report models.Report
@@ -61,9 +56,8 @@ func (h *ReportHandler) Create(w http.ResponseWriter, r *http.Request) {
 		req.Details, userID, characterID,
 	).Scan(&report.ReportID, &report.Details, &report.Status, &report.UserID, &report.CharacterID, &report.CreatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ส่งรายงานไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ส่งรายงานไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusCreated, report)
+	return writeJSON(c, fiber.StatusCreated, report)
 }

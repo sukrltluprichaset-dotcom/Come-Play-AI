@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 const maxUploadSize = 20 << 20 // 20 MB
@@ -29,20 +31,15 @@ func NewUploadHandler(supabaseURL, serviceKey, bucket string) *UploadHandler {
 	}
 }
 
-func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		writeError(w, http.StatusBadRequest, "ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 20MB)")
-		return
-	}
-
-	file, header, err := r.FormFile("file")
+func (h *UploadHandler) Upload(c *fiber.Ctx) error {
+	header, err := c.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "ไม่พบไฟล์ที่ส่งมา")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ไม่พบไฟล์ที่ส่งมา")
 	}
-	defer file.Close()
+
+	if header.Size > maxUploadSize {
+		return writeError(c, fiber.StatusBadRequest, "ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 20MB)")
+	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	allowedExt := map[string]bool{
@@ -50,14 +47,18 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		".mp4": true, ".webm": true,
 	}
 	if !allowedExt[ext] {
-		writeError(w, http.StatusBadRequest, "รองรับเฉพาะไฟล์ภาพ (jpg, png, gif, webp) หรือวิดีโอ (mp4, webm)")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รองรับเฉพาะไฟล์ภาพ (jpg, png, gif, webp) หรือวิดีโอ (mp4, webm)")
 	}
+
+	file, err := header.Open()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "อ่านไฟล์ไม่สำเร็จ")
+	}
+	defer file.Close()
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "อ่านไฟล์ไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อ่านไฟล์ไม่สำเร็จ")
 	}
 
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
@@ -69,8 +70,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	req, err := http.NewRequest(http.MethodPost, uploadURL, bytes.NewReader(fileBytes))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "สร้าง request ไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สร้าง request ไม่สำเร็จ")
 	}
 	req.Header.Set("apikey", h.SupabaseServiceKey)
 	req.Header.Set("Authorization", "Bearer "+h.SupabaseServiceKey)
@@ -79,19 +79,17 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.HTTPClient.Do(req)
 	if err != nil {
 		log.Printf("Supabase Storage เชื่อมต่อไม่สำเร็จ: %v (URL ที่ใช้: %s)", err, uploadURL)
-		writeError(w, http.StatusInternalServerError, "อัปโหลดไฟล์ไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อัปโหลดไฟล์ไม่สำเร็จ")
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Supabase Storage ตอบกลับ error (status %d): %s", resp.StatusCode, string(respBody))
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("อัปโหลดไฟล์ไม่สำเร็จ (status %d): %s", resp.StatusCode, string(respBody)))
-		return
+		return writeError(c, fiber.StatusInternalServerError, fmt.Sprintf("อัปโหลดไฟล์ไม่สำเร็จ (status %d): %s", resp.StatusCode, string(respBody)))
 	}
 
 	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", h.SupabaseURL, h.SupabaseBucket, filename)
 
-	writeJSON(w, http.StatusOK, map[string]string{"url": publicURL})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"url": publicURL})
 }

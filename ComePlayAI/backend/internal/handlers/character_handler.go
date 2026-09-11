@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/middleware"
 	"comeplayai-backend/internal/models"
@@ -43,8 +43,8 @@ func scanCharacter(row scanner) (models.Character, error) {
 	return c, nil
 }
 
-func userIDFromContext(r *http.Request) int64 {
-	userID, _ := r.Context().Value(middleware.UserIDKey).(int64)
+func userIDFromContext(c *fiber.Ctx) int64 {
+	userID, _ := c.Locals(middleware.UserIDKey).(int64)
 	return userID
 }
 
@@ -59,25 +59,22 @@ type characterRequest struct {
 	IsShared    bool    `json:"is_shared"`
 }
 
-func (h *CharacterHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CharacterHandler) Create(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	var req characterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Name = strings.TrimSpace(req.Name)
 	req.Personality = strings.TrimSpace(req.Personality)
 
 	if req.Name == "" || len(req.Name) > 100 {
-		writeError(w, http.StatusBadRequest, "ชื่อตัวละครต้องไม่ว่างและไม่เกิน 100 ตัวอักษร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ชื่อตัวละครต้องไม่ว่างและไม่เกิน 100 ตัวอักษร")
 	}
 	if req.Personality == "" {
-		writeError(w, http.StatusBadRequest, "กรุณากรอกบุคลิกนิสัยของตัวละคร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กรุณากรอกบุคลิกนิสัยของตัวละคร")
 	}
 
 	row := h.DB.QueryRow(
@@ -89,97 +86,86 @@ func (h *CharacterHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	character, err := scanCharacter(row)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "สร้างตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สร้างตัวละครไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusCreated, character)
+	return writeJSON(c, fiber.StatusCreated, character)
 }
 
 // ----- List (เฉพาะตัวละครของตัวเอง) -----
 
-func (h *CharacterHandler) ListMine(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CharacterHandler) ListMine(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	rows, err := h.DB.Query(
 		`SELECT `+characterColumns+` FROM characters WHERE user_id = $1 ORDER BY created_at DESC`,
 		userID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายการตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายการตัวละครไม่สำเร็จ")
 	}
 	defer rows.Close()
 
 	characters := []models.Character{}
 	for rows.Next() {
-		c, err := scanCharacter(rows)
+		ch, err := scanCharacter(rows)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายการตัวละครไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายการตัวละครไม่สำเร็จ")
 		}
-		characters = append(characters, c)
+		characters = append(characters, ch)
 	}
 
-	writeJSON(w, http.StatusOK, characters)
+	return writeJSON(c, fiber.StatusOK, characters)
 }
 
 // ----- Get by ID -----
 
-func (h *CharacterHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *CharacterHandler) Get(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	row := h.DB.QueryRow(`SELECT `+characterColumns+` FROM characters WHERE character_id = $1`, id)
 	character, err := scanCharacter(row)
 
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
-	userID := userIDFromContext(r)
+	userID := userIDFromContext(c)
 	if !character.IsShared && character.UserID != userID {
-		writeError(w, http.StatusForbidden, "ไม่มีสิทธิ์เข้าถึงตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusForbidden, "ไม่มีสิทธิ์เข้าถึงตัวละครนี้")
 	}
 
-	writeJSON(w, http.StatusOK, character)
+	return writeJSON(c, fiber.StatusOK, character)
 }
 
 // ----- Update (เฉพาะเจ้าของ) -----
 
-func (h *CharacterHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CharacterHandler) Update(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	var req characterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Name = strings.TrimSpace(req.Name)
 	req.Personality = strings.TrimSpace(req.Personality)
 
 	if req.Name == "" || len(req.Name) > 100 {
-		writeError(w, http.StatusBadRequest, "ชื่อตัวละครต้องไม่ว่างและไม่เกิน 100 ตัวอักษร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ชื่อตัวละครต้องไม่ว่างและไม่เกิน 100 ตัวอักษร")
 	}
 	if req.Personality == "" {
-		writeError(w, http.StatusBadRequest, "กรุณากรอกบุคลิกนิสัยของตัวละคร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กรุณากรอกบุคลิกนิสัยของตัวละคร")
 	}
 
 	row := h.DB.QueryRow(
@@ -192,47 +178,42 @@ func (h *CharacterHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	character, err := scanCharacter(row)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้ หรือคุณไม่ใช่เจ้าของ")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้ หรือคุณไม่ใช่เจ้าของ")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "แก้ไขตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "แก้ไขตัวละครไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusOK, character)
+	return writeJSON(c, fiber.StatusOK, character)
 }
 
 // ----- Delete (เฉพาะเจ้าของ) -----
 
-func (h *CharacterHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CharacterHandler) Delete(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	result, err := h.DB.Exec(`DELETE FROM characters WHERE character_id = $1 AND user_id = $2`, id, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้ หรือคุณไม่ใช่เจ้าของ")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้ หรือคุณไม่ใช่เจ้าของ")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ลบตัวละครสำเร็จ"})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
 }
 
 // ----- List Public (ค้นหาตัวละครสาธารณะของทุกคน ไม่ต้องล็อกอิน) -----
 
-func (h *CharacterHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	sortBy := r.URL.Query().Get("sort")
+func (h *CharacterHandler) ListPublic(c *fiber.Ctx) error {
+	query := strings.TrimSpace(c.Query("q"))
+	sortBy := c.Query("sort")
 
 	orderClause := "created_at DESC"
 	switch sortBy {
@@ -256,53 +237,49 @@ func (h *CharacterHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ค้นหาตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ค้นหาตัวละครไม่สำเร็จ")
 	}
 	defer rows.Close()
 
 	characters := []models.Character{}
 	for rows.Next() {
-		c, err := scanCharacter(rows)
+		ch, err := scanCharacter(rows)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "ค้นหาตัวละครไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "ค้นหาตัวละครไม่สำเร็จ")
 		}
-		characters = append(characters, c)
+		characters = append(characters, ch)
 	}
 
-	writeJSON(w, http.StatusOK, characters)
+	return writeJSON(c, fiber.StatusOK, characters)
 }
 
 // ----- Popular (ตัวละครยอดนิยม เรียงตามยอดใช้งาน) -----
 
-func (h *CharacterHandler) Popular(w http.ResponseWriter, r *http.Request) {
+func (h *CharacterHandler) Popular(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
 		`SELECT ` + characterColumns + ` FROM characters WHERE is_shared = true ORDER BY usage_count DESC LIMIT 10`,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายการตัวละครยอดนิยมไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายการตัวละครยอดนิยมไม่สำเร็จ")
 	}
 	defer rows.Close()
 
 	characters := []models.Character{}
 	for rows.Next() {
-		c, err := scanCharacter(rows)
+		ch, err := scanCharacter(rows)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายการตัวละครยอดนิยมไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายการตัวละครยอดนิยมไม่สำเร็จ")
 		}
-		characters = append(characters, c)
+		characters = append(characters, ch)
 	}
 
-	writeJSON(w, http.StatusOK, characters)
+	return writeJSON(c, fiber.StatusOK, characters)
 }
 
 // ----- Stats (สถิติของตัวละครที่ตัวเองสร้าง เห็นได้เฉพาะเจ้าของ) -----
 
-func (h *CharacterHandler) Stats(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CharacterHandler) Stats(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	rows, err := h.DB.Query(
 		`SELECT
@@ -319,8 +296,7 @@ func (h *CharacterHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		userID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดสถิติไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดสถิติไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -329,8 +305,7 @@ func (h *CharacterHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		var s models.CharacterStats
 		var avatar sql.NullString
 		if err := rows.Scan(&s.CharacterID, &s.Name, &avatar, &s.UsageCount, &s.UniqueChatters, &s.Rating, &s.ReviewCount); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดสถิติไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดสถิติไม่สำเร็จ")
 		}
 		if avatar.Valid {
 			s.AvatarURL = &avatar.String
@@ -338,5 +313,5 @@ func (h *CharacterHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		stats = append(stats, s)
 	}
 
-	writeJSON(w, http.StatusOK, stats)
+	return writeJSON(c, fiber.StatusOK, stats)
 }

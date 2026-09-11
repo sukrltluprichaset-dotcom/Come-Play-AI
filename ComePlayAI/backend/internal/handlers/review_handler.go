@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -23,33 +23,28 @@ type reviewRequest struct {
 }
 
 // CreateOrUpdate สร้างรีวิวใหม่ หรืออัปเดตรีวิวเดิมถ้าเคยรีวิวตัวละครนี้ไปแล้ว (UPSERT)
-func (h *ReviewHandler) CreateOrUpdate(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *ReviewHandler) CreateOrUpdate(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	var req reviewRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 	if req.Rating < 1 || req.Rating > 5 {
-		writeError(w, http.StatusBadRequest, "คะแนนต้องอยู่ระหว่าง 1-5")
-		return
+		return writeError(c, fiber.StatusBadRequest, "คะแนนต้องอยู่ระหว่าง 1-5")
 	}
 
 	var exists bool
 	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, characterID).Scan(&exists); err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !exists {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	}
 
 	var review models.Review
@@ -63,8 +58,7 @@ func (h *ReviewHandler) CreateOrUpdate(w http.ResponseWriter, r *http.Request) {
 		characterID, userID, req.Rating, req.Comment,
 	).Scan(&review.ReviewID, &review.CharacterID, &review.UserID, &review.Rating, &comment, &review.CreatedAt, &review.UpdatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกรีวิวไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกรีวิวไม่สำเร็จ")
 	}
 	if comment.Valid {
 		review.Comment = &comment.String
@@ -72,15 +66,14 @@ func (h *ReviewHandler) CreateOrUpdate(w http.ResponseWriter, r *http.Request) {
 
 	_ = h.DB.QueryRow(`SELECT username FROM users WHERE user_id = $1`, userID).Scan(&review.Username)
 
-	writeJSON(w, http.StatusOK, review)
+	return writeJSON(c, fiber.StatusOK, review)
 }
 
 // List แสดงรีวิวทั้งหมดของตัวละคร (ไม่ต้องล็อกอินก็ดูได้)
-func (h *ReviewHandler) List(w http.ResponseWriter, r *http.Request) {
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *ReviewHandler) List(c *fiber.Ctx) error {
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	rows, err := h.DB.Query(
@@ -92,8 +85,7 @@ func (h *ReviewHandler) List(w http.ResponseWriter, r *http.Request) {
 		characterID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรีวิวไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรีวิวไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -102,8 +94,7 @@ func (h *ReviewHandler) List(w http.ResponseWriter, r *http.Request) {
 		var rv models.Review
 		var comment sql.NullString
 		if err := rows.Scan(&rv.ReviewID, &rv.CharacterID, &rv.UserID, &rv.Username, &rv.Rating, &comment, &rv.CreatedAt, &rv.UpdatedAt); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรีวิวไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรีวิวไม่สำเร็จ")
 		}
 		if comment.Valid {
 			rv.Comment = &comment.String
@@ -111,5 +102,5 @@ func (h *ReviewHandler) List(w http.ResponseWriter, r *http.Request) {
 		reviews = append(reviews, rv)
 	}
 
-	writeJSON(w, http.StatusOK, reviews)
+	return writeJSON(c, fiber.StatusOK, reviews)
 }

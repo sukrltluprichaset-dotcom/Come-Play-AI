@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"net/http"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -16,14 +17,13 @@ func NewActivityHandler(db *sql.DB) *ActivityHandler {
 	return &ActivityHandler{DB: db}
 }
 
-func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *ActivityHandler) List(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
 		`SELECT activity_id, activity_name, description, reward_coin, is_repeatable
 		 FROM activities WHERE is_active = true ORDER BY activity_id ASC`,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายการกิจกรรมไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายการกิจกรรมไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -32,8 +32,7 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) {
 		var a models.Activity
 		var description sql.NullString
 		if err := rows.Scan(&a.ActivityID, &a.ActivityName, &description, &a.RewardCoin, &a.IsRepeatable); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายการกิจกรรมไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายการกิจกรรมไม่สำเร็จ")
 		}
 		if description.Valid {
 			a.Description = &description.String
@@ -41,16 +40,15 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) {
 		activities = append(activities, a)
 	}
 
-	writeJSON(w, http.StatusOK, activities)
+	return writeJSON(c, fiber.StatusOK, activities)
 }
 
-func (h *ActivityHandler) Claim(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *ActivityHandler) Claim(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	activityID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	activityID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสกิจกรรมไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสกิจกรรมไม่ถูกต้อง")
 	}
 
 	var rewardCoin int
@@ -60,15 +58,12 @@ func (h *ActivityHandler) Claim(w http.ResponseWriter, r *http.Request) {
 		activityID,
 	).Scan(&rewardCoin, &isRepeatable, &isActive)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบกิจกรรมนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบกิจกรรมนี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !isActive {
-		writeError(w, http.StatusBadRequest, "กิจกรรมนี้ปิดใช้งานแล้ว")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กิจกรรมนี้ปิดใช้งานแล้ว")
 	}
 
 	var alreadyClaimed bool
@@ -87,18 +82,15 @@ func (h *ActivityHandler) Claim(w http.ResponseWriter, r *http.Request) {
 		).Scan(&alreadyClaimed)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if alreadyClaimed {
-		writeError(w, http.StatusConflict, "คุณได้เข้าร่วมกิจกรรมนี้ไปแล้ว หรือไม่ตรงตามเงื่อนไข")
-		return
+		return writeError(c, fiber.StatusConflict, "คุณได้เข้าร่วมกิจกรรมนี้ไปแล้ว หรือไม่ตรงตามเงื่อนไข")
 	}
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
 
@@ -106,8 +98,7 @@ func (h *ActivityHandler) Claim(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO user_activities (user_id, activity_id) VALUES ($1, $2)`,
 		userID, activityID,
 	); err != nil {
-		writeError(w, http.StatusInternalServerError, "ทำกิจกรรมไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ทำกิจกรรมไม่สำเร็จ")
 	}
 
 	var newBalance int
@@ -116,16 +107,14 @@ func (h *ActivityHandler) Claim(w http.ResponseWriter, r *http.Request) {
 		rewardCoin, userID,
 	).Scan(&newBalance)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "อัปเดตเหรียญไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อัปเดตเหรียญไม่สำเร็จ")
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeError(w, http.StatusInternalServerError, "ทำกิจกรรมไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ทำกิจกรรมไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	return writeJSON(c, fiber.StatusOK, fiber.Map{
 		"message":     "รับรางวัลสำเร็จ",
 		"reward_coin": rewardCoin,
 		"new_balance": newBalance,

@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"database/sql"
-	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -15,8 +16,8 @@ func NewCoinHandler(db *sql.DB) *CoinHandler {
 	return &CoinHandler{DB: db}
 }
 
-func (h *CoinHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *CoinHandler) GetBalance(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	var coin models.Coin
 	err := h.DB.QueryRow(
@@ -24,9 +25,8 @@ func (h *CoinHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		userID,
 	).Scan(&coin.CoinID, &coin.Balance, &coin.UserID, &coin.UpdatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดข้อมูลกระเป๋าเหรียญไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดข้อมูลกระเป๋าเหรียญไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusOK, coin)
+	return writeJSON(c, fiber.StatusOK, coin)
 }

@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -29,7 +29,7 @@ type adminUserView struct {
 	IsSuspended bool   `json:"is_suspended"`
 }
 
-func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
 		`SELECT u.user_id, u.username, u.email, u.role, u.created_at, COALESCE(c.balance, 0), u.is_suspended
 		 FROM users u
@@ -37,8 +37,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		 ORDER BY u.user_id ASC`,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายชื่อผู้ใช้ไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายชื่อผู้ใช้ไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -46,13 +45,12 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var u adminUserView
 		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Role, &u.CreatedAt, &u.Balance, &u.IsSuspended); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายชื่อผู้ใช้ไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายชื่อผู้ใช้ไม่สำเร็จ")
 		}
 		users = append(users, u)
 	}
 
-	writeJSON(w, http.StatusOK, users)
+	return writeJSON(c, fiber.StatusOK, users)
 }
 
 // ----- เติมเหรียญแบบ Manual โดยแอดมิน -----
@@ -67,81 +65,70 @@ type suspendUserRequest struct {
 	Suspended bool `json:"suspended"`
 }
 
-func (h *AdminHandler) SuspendUser(w http.ResponseWriter, r *http.Request) {
-	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *AdminHandler) SuspendUser(c *fiber.Ctx) error {
+	targetUserID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
 	}
 
 	var req suspendUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	result, err := h.DB.Exec(`UPDATE users SET is_suspended = $1 WHERE user_id = $2`, req.Suspended, targetUserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		writeError(w, http.StatusNotFound, "ไม่พบผู้ใช้นี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบผู้ใช้นี้")
 	}
 
 	message := "ระงับบัญชีสำเร็จ"
 	if !req.Suspended {
 		message = "ยกเลิกการระงับบัญชีสำเร็จ"
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"message": message})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": message})
 }
 
 // ----- ลบบัญชีผู้ใช้ถาวร -----
 
-func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *AdminHandler) DeleteUser(c *fiber.Ctx) error {
+	targetUserID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
 	}
 
-	adminID := userIDFromContext(r)
+	adminID := userIDFromContext(c)
 	if adminID == targetUserID {
-		writeError(w, http.StatusBadRequest, "ไม่สามารถลบบัญชีของตัวเองได้")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ไม่สามารถลบบัญชีของตัวเองได้")
 	}
 
 	result, err := h.DB.Exec(`DELETE FROM users WHERE user_id = $1`, targetUserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ลบบัญชีไม่สำเร็จ (อาจมีข้อมูลเชื่อมโยงอยู่)")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ลบบัญชีไม่สำเร็จ (อาจมีข้อมูลเชื่อมโยงอยู่)")
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		writeError(w, http.StatusNotFound, "ไม่พบผู้ใช้นี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบผู้ใช้นี้")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ลบบัญชีผู้ใช้สำเร็จ"})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบบัญชีผู้ใช้สำเร็จ"})
 }
 
-func (h *AdminHandler) AdjustCoins(w http.ResponseWriter, r *http.Request) {
-	targetUserID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *AdminHandler) AdjustCoins(c *fiber.Ctx) error {
+	targetUserID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสผู้ใช้ไม่ถูกต้อง")
 	}
 
 	var req adjustCoinsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 	if req.Amount == 0 {
-		writeError(w, http.StatusBadRequest, "กรุณาระบุจำนวนเหรียญที่ไม่เป็นศูนย์")
-		return
+		return writeError(c, fiber.StatusBadRequest, "กรุณาระบุจำนวนเหรียญที่ไม่เป็นศูนย์")
 	}
 
 	var newBalance int
@@ -150,14 +137,12 @@ func (h *AdminHandler) AdjustCoins(w http.ResponseWriter, r *http.Request) {
 		req.Amount, targetUserID,
 	).Scan(&newBalance)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusBadRequest, "ยอดเหรียญจะติดลบไม่ได้ หรือไม่พบผู้ใช้นี้")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ยอดเหรียญจะติดลบไม่ได้ หรือไม่พบผู้ใช้นี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "ปรับยอดเหรียญไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ปรับยอดเหรียญไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	return writeJSON(c, fiber.StatusOK, fiber.Map{
 		"user_id":     targetUserID,
 		"new_balance": newBalance,
 	})
@@ -165,7 +150,7 @@ func (h *AdminHandler) AdjustCoins(w http.ResponseWriter, r *http.Request) {
 
 // ----- ดูตัวละครทั้งหมดในระบบ -----
 
-func (h *AdminHandler) ListAllCharacters(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) ListAllCharacters(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
 		`SELECT c.character_id, c.name, c.personality, c.is_shared, c.usage_count, c.rating, c.user_id, u.username
 		 FROM characters c
@@ -173,8 +158,7 @@ func (h *AdminHandler) ListAllCharacters(w http.ResponseWriter, r *http.Request)
 		 ORDER BY c.character_id DESC`,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายชื่อตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายชื่อตัวละครไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -191,53 +175,48 @@ func (h *AdminHandler) ListAllCharacters(w http.ResponseWriter, r *http.Request)
 
 	characters := []adminCharView{}
 	for rows.Next() {
-		var c adminCharView
-		if err := rows.Scan(&c.CharacterID, &c.Name, &c.Personality, &c.IsShared, &c.UsageCount, &c.Rating, &c.OwnerID, &c.OwnerName); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายชื่อตัวละครไม่สำเร็จ")
-			return
+		var ch adminCharView
+		if err := rows.Scan(&ch.CharacterID, &ch.Name, &ch.Personality, &ch.IsShared, &ch.UsageCount, &ch.Rating, &ch.OwnerID, &ch.OwnerName); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายชื่อตัวละครไม่สำเร็จ")
 		}
-		characters = append(characters, c)
+		characters = append(characters, ch)
 	}
 
-	writeJSON(w, http.StatusOK, characters)
+	return writeJSON(c, fiber.StatusOK, characters)
 }
 
 // ----- แอดมินลบตัวละครใดก็ได้ -----
 
-func (h *AdminHandler) DeleteCharacter(w http.ResponseWriter, r *http.Request) {
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *AdminHandler) DeleteCharacter(c *fiber.Ctx) error {
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	result, err := h.DB.Exec(`DELETE FROM characters WHERE character_id = $1`, characterID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ลบตัวละครสำเร็จ"})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
 }
 
 // ----- ดูรายงานทั้งหมด -----
 
-func (h *AdminHandler) ListReports(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) ListReports(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
-		`SELECT r.report_id, r.details, r.status, r.character_id, c.name, r.user_id, u.username, r.created_at
+		`SELECT r.report_id, r.details, r.status, r.character_id, ch.name, r.user_id, u.username, r.created_at
 		 FROM reports r
-		 JOIN characters c ON c.character_id = r.character_id
+		 JOIN characters ch ON ch.character_id = r.character_id
 		 JOIN users u ON u.user_id = r.user_id
 		 ORDER BY r.created_at DESC`,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -245,13 +224,12 @@ func (h *AdminHandler) ListReports(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var rp models.ReportAdminView
 		if err := rows.Scan(&rp.ReportID, &rp.Details, &rp.Status, &rp.CharacterID, &rp.CharacterName, &rp.UserID, &rp.Username, &rp.CreatedAt); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
 		}
 		reports = append(reports, rp)
 	}
 
-	writeJSON(w, http.StatusOK, reports)
+	return writeJSON(c, fiber.StatusOK, reports)
 }
 
 // ----- ปิดเคสรายงาน -----
@@ -260,40 +238,35 @@ type updateReportStatusRequest struct {
 	Status string `json:"status"` // "resolved" หรือ "rejected"
 }
 
-func (h *AdminHandler) UpdateReportStatus(w http.ResponseWriter, r *http.Request) {
-	reportID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+func (h *AdminHandler) UpdateReportStatus(c *fiber.Ctx) error {
+	reportID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสรายงานไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสรายงานไม่ถูกต้อง")
 	}
 
 	var req updateReportStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 	if req.Status != "resolved" && req.Status != "rejected" {
-		writeError(w, http.StatusBadRequest, "สถานะต้องเป็น resolved หรือ rejected เท่านั้น")
-		return
+		return writeError(c, fiber.StatusBadRequest, "สถานะต้องเป็น resolved หรือ rejected เท่านั้น")
 	}
 
 	result, err := h.DB.Exec(`UPDATE reports SET status = $1 WHERE report_id = $2`, req.Status, reportID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		writeError(w, http.StatusNotFound, "ไม่พบรายงานนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบรายงานนี้")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "อัปเดตสถานะสำเร็จ"})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "อัปเดตสถานะสำเร็จ"})
 }
 
 // ----- สถิติภาพรวมระบบ -----
 
-func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) Stats(c *fiber.Ctx) error {
 	var totalUsers, totalCharacters, totalChats, pendingReports int
 
 	h.DB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&totalUsers)
@@ -301,7 +274,7 @@ func (h *AdminHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	h.DB.QueryRow(`SELECT COUNT(*) FROM chats`).Scan(&totalChats)
 	h.DB.QueryRow(`SELECT COUNT(*) FROM reports WHERE status = 'pending'`).Scan(&pendingReports)
 
-	writeJSON(w, http.StatusOK, map[string]int{
+	return writeJSON(c, fiber.StatusOK, fiber.Map{
 		"total_users":      totalUsers,
 		"total_characters": totalCharacters,
 		"total_chats":      totalChats,

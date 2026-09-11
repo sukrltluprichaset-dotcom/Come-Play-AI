@@ -2,21 +2,20 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"math"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
 
 	"comeplayai-backend/internal/llm"
 	"comeplayai-backend/internal/models"
 )
 
-const chatCost = 1 // จำนวนเหรียญที่หักต่อการส่งข้อความ 1 ครั้ง
+const chatCost = 2 // จำนวนเหรียญที่หักต่อการส่งข้อความ 1 ครั้ง (ตรงกับผลทดสอบตารางที่ 4.3 ในเล่ม)
 
 type ChatHandler struct {
 	DB     *sql.DB
@@ -48,25 +47,22 @@ func cosineSimilarity(a, b []float64) float64 {
 	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
-func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	var req sendMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Message = strings.TrimSpace(req.Message)
 	if req.Message == "" {
-		writeError(w, http.StatusBadRequest, "ข้อความห้ามว่างเปล่า")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ข้อความห้ามว่างเปล่า")
 	}
 
 	var isShared bool
@@ -78,25 +74,20 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	).Scan(&isShared, &ownerID, &personality)
 
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !isShared && ownerID != userID {
-		writeError(w, http.StatusForbidden, "ไม่มีสิทธิ์คุยกับตัวละครนี้")
-		return
+		return writeError(c, fiber.StatusForbidden, "ไม่มีสิทธิ์คุยกับตัวละครนี้")
 	}
 
 	var currentBalance int
 	if err := h.DB.QueryRow(`SELECT balance FROM coins WHERE user_id = $1`, userID).Scan(&currentBalance); err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if currentBalance < chatCost {
-		writeError(w, http.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
-		return
+		return writeError(c, fiber.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
 	}
 
 	// ----- ดึงความจำระยะสั้น: 20 ข้อความล่าสุดในห้องนี้ -----
@@ -109,16 +100,14 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		userID, characterID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
 	}
 	var history []llm.ChatTurn
 	for historyRows.Next() {
 		var senderType, message string
 		if err := historyRows.Scan(&senderType, &message); err != nil {
 			historyRows.Close()
-			writeError(w, http.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
 		}
 		role := "user"
 		if senderType == "ai" {
@@ -160,10 +149,10 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 				Score   float64
 			}
 			var scoredList []scored
-			for _, c := range candidates {
-				score := cosineSimilarity(userEmbedding, c.Embedding)
+			for _, cand := range candidates {
+				score := cosineSimilarity(userEmbedding, cand.Embedding)
 				if score > 0.75 {
-					scoredList = append(scoredList, scored{Message: c.Message, Score: score})
+					scoredList = append(scoredList, scored{Message: cand.Message, Score: score})
 				}
 			}
 			sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].Score > scoredList[j].Score })
@@ -186,8 +175,7 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	aiReply, err := h.Gemini.GenerateReply(fullPersonality, history, req.Message)
 	if err != nil {
 		log.Printf("Gemini API error: %v", err)
-		writeError(w, http.StatusInternalServerError, "ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง")
 	}
 
 	aiEmbedding, embedErr := h.Gemini.EmbedText(aiReply)
@@ -197,8 +185,7 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
 
@@ -210,8 +197,7 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		req.Message, userID, characterID, pq.Array(userEmbedding),
 	).Scan(&userChat.ChatID, &userChat.SenderType, &userChat.Message, &userChat.SendTime, &userChat.UserID, &userChat.CharacterID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
 	}
 
 	var aiChat models.Chat
@@ -222,13 +208,11 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		aiReply, userID, characterID, pq.Array(aiEmbedding),
 	).Scan(&aiChat.ChatID, &aiChat.SenderType, &aiChat.Message, &aiChat.SendTime, &aiChat.UserID, &aiChat.CharacterID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "รับคำตอบไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "รับคำตอบไม่สำเร็จ")
 	}
 
 	if _, err := tx.Exec(`UPDATE characters SET usage_count = usage_count + 1 WHERE character_id = $1`, characterID); err != nil {
-		writeError(w, http.StatusInternalServerError, "อัปเดตสถิติไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "อัปเดตสถิติไม่สำเร็จ")
 	}
 
 	var newBalance int
@@ -237,19 +221,16 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		chatCost, userID,
 	).Scan(&newBalance)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
-		return
+		return writeError(c, fiber.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "หักเหรียญไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "หักเหรียญไม่สำเร็จ")
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeError(w, http.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
+	return writeJSON(c, fiber.StatusCreated, fiber.Map{
 		"user_message": userChat,
 		"ai_message":   aiChat,
 		"coin_spent":   chatCost,
@@ -257,13 +238,12 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *ChatHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *ChatHandler) GetHistory(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
-	characterID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
 	rows, err := h.DB.Query(
@@ -272,20 +252,18 @@ func (h *ChatHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 		userID, characterID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
 	}
 	defer rows.Close()
 
 	chats := []models.Chat{}
 	for rows.Next() {
-		var c models.Chat
-		if err := rows.Scan(&c.ChatID, &c.SenderType, &c.Message, &c.SendTime, &c.UserID, &c.CharacterID); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
-			return
+		var ch models.Chat
+		if err := rows.Scan(&ch.ChatID, &ch.SenderType, &ch.Message, &ch.SendTime, &ch.UserID, &ch.CharacterID); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
 		}
-		chats = append(chats, c)
+		chats = append(chats, ch)
 	}
 
-	writeJSON(w, http.StatusOK, chats)
+	return writeJSON(c, fiber.StatusOK, chats)
 }

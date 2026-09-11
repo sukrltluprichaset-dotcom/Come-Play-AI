@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"strings"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/auth"
 	"comeplayai-backend/internal/models"
@@ -24,14 +24,12 @@ type authResponse struct {
 	Token string      `json:"token"`
 }
 
-func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
+func writeJSON(c *fiber.Ctx, status int, payload interface{}) error {
+	return c.Status(status).JSON(payload)
 }
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
+func writeError(c *fiber.Ctx, status int, message string) error {
+	return writeJSON(c, status, fiber.Map{"error": message})
 }
 
 type registerRequest struct {
@@ -40,27 +38,23 @@ type registerRequest struct {
 	Password string `json:"password"`
 }
 
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req registerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Username = strings.TrimSpace(req.Username)
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
 	if len(req.Username) < 3 || len(req.Username) > 50 {
-		writeError(w, http.StatusBadRequest, "ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร")
 	}
 	if !strings.Contains(req.Email, "@") {
-		writeError(w, http.StatusBadRequest, "รูปแบบอีเมลไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบอีเมลไม่ถูกต้อง")
 	}
 	if len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร")
 	}
 
 	var exists bool
@@ -69,24 +63,20 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		req.Username, req.Email,
 	).Scan(&exists)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if exists {
-		writeError(w, http.StatusConflict, "อีเมลหรือชื่อผู้ใช้งานนี้มีในระบบแล้ว")
-		return
+		return writeError(c, fiber.StatusConflict, "อีเมลหรือชื่อผู้ใช้งานนี้มีในระบบแล้ว")
 	}
 
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
 
@@ -98,27 +88,23 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		req.Username, req.Email, hashedPassword,
 	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
 	}
 
 	if _, err := tx.Exec(`INSERT INTO coins (balance, user_id) VALUES (0, $1)`, user.UserID); err != nil {
-		writeError(w, http.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeError(w, http.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
 	}
 
 	token, err := auth.GenerateToken(user.UserID, user.Role, h.JWTSecret)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
-	writeJSON(w, http.StatusCreated, authResponse{User: user, Token: token})
+	return writeJSON(c, fiber.StatusCreated, authResponse{User: user, Token: token})
 }
 
 type loginRequest struct {
@@ -126,11 +112,10 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req loginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
@@ -145,32 +130,27 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	).Scan(&user.UserID, &user.Username, &user.Email, &passwordHash, &user.Role, &user.CreatedAt, &isSuspended)
 
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
 	if !auth.CheckPassword(req.Password, passwordHash) {
-		writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
 	}
 
 	if isSuspended {
-		writeError(w, http.StatusForbidden, "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ")
-		return
+		return writeError(c, fiber.StatusForbidden, "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ")
 	}
 
 	_, _ = h.DB.Exec(`UPDATE users SET last_login = now() WHERE user_id = $1`, user.UserID)
 
 	token, err := auth.GenerateToken(user.UserID, user.Role, h.JWTSecret)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
-	writeJSON(w, http.StatusOK, authResponse{User: user, Token: token})
+	return writeJSON(c, fiber.StatusOK, authResponse{User: user, Token: token})
 }
 
 // ----- Change Password -----
@@ -180,42 +160,36 @@ type changePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
-func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	var req changePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 
 	if len(req.NewPassword) < 8 {
-		writeError(w, http.StatusBadRequest, "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร")
-		return
+		return writeError(c, fiber.StatusBadRequest, "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร")
 	}
 
 	var currentHash string
 	err := h.DB.QueryRow(`SELECT password FROM users WHERE user_id = $1`, userID).Scan(&currentHash)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
 	if !auth.CheckPassword(req.OldPassword, currentHash) {
-		writeError(w, http.StatusUnauthorized, "รหัสผ่านเดิมไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusUnauthorized, "รหัสผ่านเดิมไม่ถูกต้อง")
 	}
 
 	newHash, err := auth.HashPassword(req.NewPassword)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
 	if _, err := h.DB.Exec(`UPDATE users SET password = $1 WHERE user_id = $2`, newHash, userID); err != nil {
-		writeError(w, http.StatusInternalServerError, "เปลี่ยนรหัสผ่านไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เปลี่ยนรหัสผ่านไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "เปลี่ยนรหัสผ่านสำเร็จ"})
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "เปลี่ยนรหัสผ่านสำเร็จ"})
 }

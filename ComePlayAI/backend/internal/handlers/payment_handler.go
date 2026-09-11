@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
-	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 
 	"comeplayai-backend/internal/models"
 )
@@ -18,11 +18,10 @@ func NewPaymentHandler(db *sql.DB) *PaymentHandler {
 
 // ----- ดูแพ็กเกจที่มีขาย -----
 
-func (h *PaymentHandler) ListPackages(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) ListPackages(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(`SELECT package_id, name, price, coin_amount FROM packages ORDER BY price ASC`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดรายการแพ็กเกจไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายการแพ็กเกจไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -30,13 +29,12 @@ func (h *PaymentHandler) ListPackages(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var p models.Package
 		if err := rows.Scan(&p.PackageID, &p.Name, &p.Price, &p.CoinAmount); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดรายการแพ็กเกจไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายการแพ็กเกจไม่สำเร็จ")
 		}
 		packages = append(packages, p)
 	}
 
-	writeJSON(w, http.StatusOK, packages)
+	return writeJSON(c, fiber.StatusOK, packages)
 }
 
 // ----- ยืนยันชำระเงิน (จำลอง) + เติมเหรียญทันที -----
@@ -46,17 +44,15 @@ type createPaymentRequest struct {
 	Method    string `json:"method"` // "PromptPay" หรือ "Credit Card"
 }
 
-func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *PaymentHandler) CreatePayment(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	var req createPaymentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
-		return
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
 	}
 	if req.Method != "PromptPay" && req.Method != "Credit Card" {
-		writeError(w, http.StatusBadRequest, "ช่องทางการชำระเงินไม่ถูกต้อง")
-		return
+		return writeError(c, fiber.StatusBadRequest, "ช่องทางการชำระเงินไม่ถูกต้อง")
 	}
 
 	var pkgName string
@@ -67,17 +63,14 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		req.PackageID,
 	).Scan(&pkgName, &price, &coinAmount)
 	if err == sql.ErrNoRows {
-		writeError(w, http.StatusNotFound, "ไม่พบแพ็กเกจนี้")
-		return
+		return writeError(c, fiber.StatusNotFound, "ไม่พบแพ็กเกจนี้")
 	} else if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
 
@@ -89,8 +82,7 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		userID, req.PackageID, req.Method, price, pkgName, coinAmount,
 	).Scan(&payment.PaymentID, &payment.UserID, &payment.PackageID, &payment.PaymentMethod, &payment.Amount, &payment.Status, &payment.PackageName, &payment.CoinAmount, &payment.PaymentTime)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "บันทึกรายการชำระเงินไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกรายการชำระเงินไม่สำเร็จ")
 	}
 
 	var newBalance int
@@ -99,16 +91,14 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		coinAmount, userID,
 	).Scan(&newBalance)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "เติมเหรียญไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "เติมเหรียญไม่สำเร็จ")
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeError(w, http.StatusInternalServerError, "ทำรายการไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "ทำรายการไม่สำเร็จ")
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
+	return writeJSON(c, fiber.StatusCreated, fiber.Map{
 		"payment":     payment,
 		"new_balance": newBalance,
 	})
@@ -116,8 +106,8 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 // ----- ดูประวัติการทำรายการของตัวเอง -----
 
-func (h *PaymentHandler) ListMyPayments(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r)
+func (h *PaymentHandler) ListMyPayments(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
 
 	rows, err := h.DB.Query(
 		`SELECT payment_id, user_id, package_id, payment_method, amount, status, package_name, coin_amount, payment_time
@@ -125,8 +115,7 @@ func (h *PaymentHandler) ListMyPayments(w http.ResponseWriter, r *http.Request) 
 		userID,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "โหลดประวัติทำรายการไม่สำเร็จ")
-		return
+		return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติทำรายการไม่สำเร็จ")
 	}
 	defer rows.Close()
 
@@ -134,11 +123,10 @@ func (h *PaymentHandler) ListMyPayments(w http.ResponseWriter, r *http.Request) 
 	for rows.Next() {
 		var p models.Payment
 		if err := rows.Scan(&p.PaymentID, &p.UserID, &p.PackageID, &p.PaymentMethod, &p.Amount, &p.Status, &p.PackageName, &p.CoinAmount, &p.PaymentTime); err != nil {
-			writeError(w, http.StatusInternalServerError, "โหลดประวัติทำรายการไม่สำเร็จ")
-			return
+			return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติทำรายการไม่สำเร็จ")
 		}
 		payments = append(payments, p)
 	}
 
-	writeJSON(w, http.StatusOK, payments)
+	return writeJSON(c, fiber.StatusOK, payments)
 }
