@@ -815,7 +815,7 @@
         let chatActiveMediaUrl = '';
         let chatActiveMediaType = 'image';
         let hasChattedInCurrentSession = false;
-        let isSendingChat = false; // กันการยิงส่งข้อความซ้อนกันหลาย request พร้อมกัน
+        let sendingCharacterIds = new Set(); // เก็บ characterId ที่กำลังรอ AI ตอบอยู่ (กันซ้อนเฉพาะ "ห้องเดียวกัน" ไม่ล็อกข้ามห้อง)
         let chatMsgCounter = 0;
         let pendingPaymentCoins = 0;
         let pendingPaymentPrice = 0;
@@ -1177,6 +1177,13 @@
                 bgVid.classList.add('hidden'); bgImg.src = chatActiveMediaUrl; bgImg.classList.remove('hidden');
                 hdrVid.classList.add('hidden'); hdrImg.src = chatActiveMediaUrl; hdrImg.classList.remove('hidden');
             }
+            // ซิงก์สถานะปุ่มส่ง/ช่องพิมพ์ให้ตรงกับห้องที่เพิ่งเข้ามา (ถ้าห้องนี้มีข้อความค้างรอ AI ตอบอยู่เบื้องหลังก็ยังล็อกไว้ ถ้าไม่มีก็ต้องปลดล็อกให้พิมพ์ได้เสมอ ไม่ใช่ค้างจากห้องก่อนหน้า)
+            const sendBtnEl = document.getElementById('chat-send-btn');
+            const chatInputEl = document.getElementById('chat-input');
+            const stillBusy = sendingCharacterIds.has(characterId);
+            if (sendBtnEl) sendBtnEl.disabled = stillBusy;
+            if (chatInputEl) chatInputEl.disabled = stillBusy;
+
             const msgContainer = document.getElementById('chat-messages');
             msgContainer.innerHTML = '';
             try {
@@ -1196,55 +1203,71 @@
 
         async function sendMessage(event) {
             event.preventDefault();
-            // กันกดส่งซ้อนขณะที่ยังรอคำตอบก่อนหน้าอยู่ (ต้นตอที่ทำให้ข้อความก่อนหน้าหายเวลาพิมพ์รัวๆ)
-            if (isSendingChat) return;
+            // กันกดส่งซ้อนขณะที่ยังรอคำตอบก่อนหน้าอยู่ "ในห้องนี้" (ต้นตอที่ทำให้ข้อความก่อนหน้าหายเวลาพิมพ์รัวๆ)
+            // แต่ไม่ล็อกข้ามห้อง เพื่อไม่ให้ออกจากแชทไปห้องอื่นแล้วพิมพ์ไม่ได้ทั้งที่ห้องนั้นไม่ได้ค้างรออะไรอยู่
+            if (sendingCharacterIds.has(currentChatCharacterId)) return;
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if (!text) return;
+            const characterId = currentChatCharacterId;
             input.value = '';
-            await doSendChat(text);
+            await doSendChat(text, characterId);
         }
 
-        async function doSendChat(text, retryMsgId = null) {
-            const sendBtn = document.getElementById('chat-send-btn');
-            const input = document.getElementById('chat-input');
-            const scrollArea = document.getElementById('chat-history');
+        async function doSendChat(text, characterId, retryMsgId = null) {
+            const isActiveRoom = () => currentChatCharacterId === characterId;
 
-            isSendingChat = true;
-            if (sendBtn) sendBtn.disabled = true;
-            if (input) input.disabled = true;
+            sendingCharacterIds.add(characterId);
+            if (isActiveRoom()) {
+                const sendBtn = document.getElementById('chat-send-btn');
+                const input = document.getElementById('chat-input');
+                if (sendBtn) sendBtn.disabled = true;
+                if (input) input.disabled = true;
+            }
 
             const msgId = retryMsgId !== null ? retryMsgId : ++chatMsgCounter;
             const statusEl = () => document.querySelector(`#chat-msg-${msgId} .chat-msg-status`);
 
-            if (retryMsgId === null) {
-                renderChatMessage('user', text, chatActiveMediaUrl, chatActiveMediaType, msgId);
-            } else {
-                const el = statusEl();
-                if (el) { el.classList.add('hidden'); el.innerText = ''; el.onclick = null; }
+            if (isActiveRoom()) {
+                if (retryMsgId === null) {
+                    renderChatMessage('user', text, chatActiveMediaUrl, chatActiveMediaType, msgId);
+                } else {
+                    const el = statusEl();
+                    if (el) { el.classList.add('hidden'); el.innerText = ''; el.onclick = null; }
+                }
+                const scrollArea = document.getElementById('chat-history');
+                scrollArea.scrollTop = scrollArea.scrollHeight;
             }
-            scrollArea.scrollTop = scrollArea.scrollHeight;
 
             try {
-                const data = await apiFetch(`/api/characters/${currentChatCharacterId}/chats`, { method: 'POST', body: JSON.stringify({ message: text }) });
-                hasChattedInCurrentSession = true;
-                renderChatMessage('ai', data.ai_message.message, chatActiveMediaUrl, chatActiveMediaType);
-                document.getElementById('user-coin-balance').innerText = data.coin_balance.toLocaleString();
-                scrollArea.scrollTop = scrollArea.scrollHeight;
-            } catch (err) {
-                // แสดง alert เหมือนเดิม แต่เพิ่มการทำเครื่องหมายที่ข้อความจริงๆ ด้วย
-                // เผื่อผู้ใช้กดออกจากห้องแชทไปก่อนที่จะเห็น alert (จะได้ไม่รู้สึกว่าข้อความ "หายเงียบๆ")
-                const el = statusEl();
-                if (el) {
-                    el.classList.remove('hidden');
-                    el.innerText = 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่';
-                    el.onclick = () => doSendChat(text, msgId);
+                const data = await apiFetch(`/api/characters/${characterId}/chats`, { method: 'POST', body: JSON.stringify({ message: text }) });
+                if (isActiveRoom()) {
+                    hasChattedInCurrentSession = true;
+                    renderChatMessage('ai', data.ai_message.message, chatActiveMediaUrl, chatActiveMediaType);
+                    document.getElementById('user-coin-balance').innerText = data.coin_balance.toLocaleString();
+                    const scrollArea = document.getElementById('chat-history');
+                    scrollArea.scrollTop = scrollArea.scrollHeight;
                 }
-                showCustomAlert(err.message, 'ส่งข้อความไม่สำเร็จ');
+            } catch (err) {
+                // แสดง alert เหมือนเดิม แต่เพิ่มการทำเครื่องหมายที่ข้อความจริงๆ ด้วย (ถ้ายังอยู่ห้องเดิม)
+                // เผื่อผู้ใช้กดออกจากห้องแชทไปก่อนที่จะเห็น alert (จะได้ไม่รู้สึกว่าข้อความ "หายเงียบๆ")
+                if (isActiveRoom()) {
+                    const el = statusEl();
+                    if (el) {
+                        el.classList.remove('hidden');
+                        el.innerText = 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่';
+                        el.onclick = () => doSendChat(text, characterId, msgId);
+                    }
+                    showCustomAlert(err.message, 'ส่งข้อความไม่สำเร็จ');
+                }
             } finally {
-                isSendingChat = false;
-                if (sendBtn) sendBtn.disabled = false;
-                if (input) input.disabled = false;
+                sendingCharacterIds.delete(characterId);
+                if (isActiveRoom()) {
+                    const sendBtn = document.getElementById('chat-send-btn');
+                    const input = document.getElementById('chat-input');
+                    if (sendBtn) sendBtn.disabled = false;
+                    if (input) input.disabled = false;
+                }
             }
         }
 
