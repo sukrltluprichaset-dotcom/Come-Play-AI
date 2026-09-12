@@ -882,7 +882,10 @@
                 document.getElementById('sidebar-username').innerText = data.user.username;
                 document.getElementById('auth-layout').classList.add('hidden');
                 document.getElementById('app-layout').classList.remove('hidden');
-                showView('dashboard-view', 'nav-home');
+                // ตั้งหน้า dashboard เป็น "จุดฐาน" ของ history ในแอป (แทนที่ entry เดิมก่อนล็อกอิน แทนที่จะ push ซ้อนเพิ่ม)
+                // ทำให้กด back จากหน้าแรกสุดของแอปแล้วออกจากเว็บได้ตามปกติ แต่กด back จากหน้าที่ลึกกว่านั้นจะย้อนกลับในแอปแทน
+                history.replaceState({ appView: 'dashboard-view', appNav: 'nav-home' }, '', '#dashboard-view');
+                showView('dashboard-view', 'nav-home', false);
                 showCustomAlert('เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับสู่ Come Play AI', 'สำเร็จ');
                 loadDashboardCharacters();
                 loadCoinBalance();
@@ -920,6 +923,8 @@
                 localStorage.removeItem('user');
                 document.getElementById('app-layout').classList.add('hidden');
                 document.getElementById('auth-layout').classList.remove('hidden');
+                // เคลียร์ state/หน้าที่บันทึกไว้ใน history หลัง logout กันปุ่ม back ย้อนกลับเข้าไปในแอปทั้งที่ออกจากระบบไปแล้ว
+                history.replaceState(null, '', location.pathname + location.search);
                 showLogin();
             });
         }
@@ -942,7 +947,7 @@
         function closeCustomConfirm() { document.getElementById('custom-confirm-modal').classList.add('hidden'); confirmActionCallback = null; }
         document.getElementById('custom-confirm-ok-btn').addEventListener('click', () => { if (confirmActionCallback) confirmActionCallback(); closeCustomConfirm(); });
 
-        function showView(viewId, navId) {
+        function showView(viewId, navId, pushHistory = true) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
             document.querySelectorAll('#main-nav button').forEach(el => {
@@ -964,7 +969,22 @@
                 document.getElementById('sidebar').classList.add('-translate-x-full');
                 document.getElementById('sidebar-overlay').classList.add('hidden');
             }
+
+            // ผูกทุกการเปลี่ยนหน้ากับ browser history ของแอป เพื่อให้ปุ่ม/ท่าทาง back ของมือถือ
+            // ย้อนกลับไปหน้าก่อนหน้า "ในเว็บ" (เช่น จากห้องแชทกลับไปหน้ารายชื่อ) แทนที่จะออกจากเว็บทันที
+            // pushHistory = false ใช้ตอนถูกเรียกจาก popstate handler เอง กันการ push ซ้อนไม่รู้จบ
+            if (pushHistory) {
+                history.pushState({ appView: viewId, appNav: navId || '' }, '', '#' + viewId);
+            }
         }
+
+        // เวลาผู้ใช้กดปุ่ม/ปาดนิ้ว back ของเบราว์เซอร์หรือมือถือ ให้ย้อนกลับไปหน้าที่บันทึกไว้ในแอปแทน
+        // ถ้าไม่มี state ของแอปแล้ว (ย้อนกลับไปถึงจุดก่อนเข้าแอป/ก่อนล็อกอิน) ก็ปล่อยให้พฤติกรรม back ปกติทำงานไป
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.appView && document.getElementById(event.state.appView)) {
+                showView(event.state.appView, event.state.appNav, false);
+            }
+        });
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
