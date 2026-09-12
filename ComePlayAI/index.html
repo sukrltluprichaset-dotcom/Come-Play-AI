@@ -176,9 +176,9 @@
                     <button onclick="showDailyRewardModal()" class="relative z-10 bg-white text-indigo-600 font-bold py-3 px-6 rounded-full hover:bg-indigo-50 hover:scale-105 transition transform shadow-md flex items-center space-x-2"><i class="fa-solid fa-gift text-xl"></i><span>รับรางวัลรายวัน</span></button>
                     <i class="fa-solid fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-20"></i>
                 </div>
-                <div class="flex justify-between items-end mb-6">
-                    <div><h3 class="text-xl font-bold text-slate-800">เพื่อนของคุณ</h3><p class="text-sm text-slate-500">เลือกตัวละครเพื่อเริ่มการสนทนา หรือกดไอคอนดินสอเพื่อแก้ไข</p></div>
-                    <div class="relative"><input type="text" id="search-input" onkeyup="filterCharacters()" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 bg-white shadow-sm"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i></div>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-6">
+                    <div class="min-w-0"><h3 class="text-xl font-bold text-slate-800">เพื่อนของคุณ</h3><p class="text-sm text-slate-500">เลือกตัวละครเพื่อเริ่มการสนทนา หรือกดไอคอนดินสอเพื่อแก้ไข</p></div>
+                    <div class="relative"><input type="text" id="search-input" onkeyup="filterCharacters()" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white shadow-sm"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i></div>
                 </div>
                 <div id="character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
                     <div id="create-new-btn" class="bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center h-full min-h-[280px] hover:bg-slate-200 hover:border-indigo-400 transition cursor-pointer text-slate-500 hover:text-indigo-600" onclick="openCreateCharMode()">
@@ -189,9 +189,9 @@
                 <div id="search-empty" class="hidden text-center py-10"><i class="fa-solid fa-ghost text-5xl text-slate-300 mb-4"></i><p class="text-slate-500">ไม่พบตัวละครที่คุณค้นหา</p></div>
 
                 <div class="mt-10 pt-8 border-t border-slate-200">
-                    <div class="flex justify-between items-end mb-6">
-                        <div><h3 class="text-xl font-bold text-slate-800">ค้นหาตัวละครสาธารณะ</h3><p class="text-sm text-slate-500">คุยกับตัวละครที่ผู้ใช้งานคนอื่นสร้างและแชร์ไว้</p></div>
-                        <div class="relative"><input type="text" id="public-search-input" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 bg-white shadow-sm"><i class="fa-solid fa-earth-americas absolute left-3 top-2.5 text-slate-400"></i></div>
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-6">
+                        <div class="min-w-0"><h3 class="text-xl font-bold text-slate-800">ค้นหาตัวละครสาธารณะ</h3><p class="text-sm text-slate-500">คุยกับตัวละครที่ผู้ใช้งานคนอื่นสร้างและแชร์ไว้</p></div>
+                        <div class="relative"><input type="text" id="public-search-input" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white shadow-sm"><i class="fa-solid fa-earth-americas absolute left-3 top-2.5 text-slate-400"></i></div>
                     </div>
                     <div id="public-character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8"></div>
                     <div id="public-search-empty" class="hidden text-center py-10 text-slate-500"><i class="fa-solid fa-ghost text-5xl text-slate-300 mb-4"></i><p>ไม่พบตัวละครสาธารณะที่คุณค้นหา</p></div>
@@ -590,9 +590,10 @@
                     const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                     const safeName = char.name.replace(/'/g, "\\'");
                     const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                    const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                     const mediaTagHTML = mediaType === 'video'
                         ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
-                        : `<img src="${avatarUrl}" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                        : `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='${fallbackAvatarUrl}';" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
                     const cardHTML = `
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer char-card flex flex-col animate-fade-in" data-name="${char.name}" data-character-id="${char.character_id}" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
                             <div class="h-40 bg-emerald-100 relative overflow-hidden">
@@ -644,9 +645,10 @@
                 const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                 const safeName = char.name.replace(/'/g, "\\'");
                 const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                 const mediaTagHTML = mediaType === 'video'
                     ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
-                    : `<img src="${avatarUrl}" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                    : `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='${fallbackAvatarUrl}';" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
                 const cardHTML = `
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
                         <div class="h-40 bg-indigo-100 relative overflow-hidden">
@@ -1135,24 +1137,41 @@
             }
         }
 
+        // ป้องกัน HTML/สคริปต์แปลกปลอมที่อาจแฝงมาในข้อความ ก่อนค่อยแปลง markdown เบื้องต้นเป็น HTML สำหรับแสดงผล
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str == null ? '' : String(str);
+            return div.innerHTML;
+        }
+
+        function formatChatText(text) {
+            let safe = escapeHtml(text);
+            safe = safe.replace(/^#{1,3}\s?(.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>');
+            safe = safe.replace(/^[-*]\s+(.+)$/gm, '• $1'); // ต้องแทนที่บูลเล็ตก่อนตัวเอียง กัน "* " ต้นบรรทัดโดนตีความเป็น *italic* ผิด
+            safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            safe = safe.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+            safe = safe.replace(/\n/g, '<br>');
+            return safe;
+        }
+
         function renderChatMessage(senderType, text, avatarUrl, mediaType, msgId = null) {
             const msgContainer = document.getElementById('chat-messages');
             if (senderType === 'user') {
                 const idAttr = msgId !== null ? ` id="chat-msg-${msgId}"` : '';
                 msgContainer.insertAdjacentHTML('beforeend', `<div${idAttr} class="flex flex-col items-end self-end max-w-[85%] animate-fade-in mt-4">
                     <div class="flex items-end space-x-3">
-                        <div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-br-none shadow-md text-sm">${text}</div>
+                        <div class="bg-indigo-600 text-white p-4 rounded-2xl rounded-br-none shadow-md text-sm">${formatChatText(text)}</div>
                     </div>
                     <div class="chat-msg-status hidden text-xs text-red-500 mt-1 mr-1 cursor-pointer hover:underline"></div>
                 </div>`);
             } else {
                 let avatarHTML = mediaType === 'video'
                     ? `<video class="absolute inset-0 w-full h-full object-cover" src="${avatarUrl}" autoplay loop muted playsinline></video>`
-                    : `<img class="absolute inset-0 w-full h-full object-cover ${avatarUrl.includes('dicebear') ? 'p-1' : ''}" src="${avatarUrl}">`;
+                    : `<img class="absolute inset-0 w-full h-full object-cover ${avatarUrl.includes('dicebear') ? 'p-1' : ''}" src="${avatarUrl}" onerror="this.onerror=null;this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(currentChatCharName || 'default')}';">`;
                 msgContainer.insertAdjacentHTML('beforeend', `
                     <div class="flex items-end space-x-3 self-start max-w-[85%] animate-fade-in mt-4">
                         <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative flex-shrink-0 bg-white">${avatarHTML}</div>
-                        <div class="bg-white text-slate-800 p-4 rounded-2xl rounded-bl-none shadow-md text-sm border border-slate-100"><p>${text}</p></div>
+                        <div class="bg-white text-slate-800 p-4 rounded-2xl rounded-bl-none shadow-md text-sm border border-slate-100"><p>${formatChatText(text)}</p></div>
                     </div>`);
             }
         }
