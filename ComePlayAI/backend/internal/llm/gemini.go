@@ -22,7 +22,9 @@ func NewGeminiClient(apiKey string) *GeminiClient {
 		Model:  "gemini-flash-latest",
 		// โมเดลสำรอง ใช้เมื่อโมเดลหลักโหลดสูง (503) หรือติด rate limit (429)
 		// ใช้ชื่อแบบ -latest ทั้งหมด กัน Google ปลดระวางรุ่นแล้วโค้ดพัง
-		FallbackModels: []string{"gemini-flash-lite-latest", "gemini-pro-latest"},
+		// หมายเหตุ: ตัด gemini-pro-latest ออก เพราะบัญชี free tier ปัจจุบันมีโควตาโมเดลนี้เป็น 0
+		// (จะ error 429 "limit: 0" ทุกครั้งแน่นอน ใส่ไว้ในลิสต์มีแต่เสียเวลา retry เปล่าๆ)
+		FallbackModels: []string{"gemini-flash-lite-latest"},
 		HTTPClient:     &http.Client{Timeout: 60 * time.Second},
 	}
 }
