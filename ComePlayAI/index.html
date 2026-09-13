@@ -113,6 +113,14 @@
         body.dark-theme .border-indigo-100,
         body.dark-theme .border-indigo-200 { border-color: rgba(168, 85, 247, 0.4) !important; }
         body.dark-theme .shadow-indigo-600 { --tw-shadow-color: rgba(168, 85, 247, 0.4) !important; }
+        /* ข้อความโลโก้ "Come Play AI" ไล่สีนีออนฟ้า-ม่วง-ชมพูตามโลโก้แบรนด์ */
+        .cpa-brand-text {
+            background: linear-gradient(135deg, #22d3ee, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
         /* พื้นหลังหน้าล็อกอิน/สมัครสมาชิก ให้เข้มขึ้นและมีแสงนีออนตามโลโก้ */
         body.dark-theme #auth-layout.bg-gradient-to-br {
             background:
@@ -154,8 +162,8 @@
 
         <div id="login-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-pop-up border border-white/20">
             <div class="text-center mb-8">
-                <div class="w-20 h-20 bg-indigo-600 rounded-full mx-auto flex items-center justify-center text-white text-3xl mb-4 shadow-lg shadow-indigo-600/30"><i class="fa-solid fa-robot"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">Come Play AI</h1>
+                <img src="logo-mark.svg" alt="ComePlayAI" class="w-20 h-20 rounded-2xl mx-auto mb-4 shadow-lg shadow-indigo-600/30">
+                <h1 class="text-2xl font-black cpa-brand-text">Come Play AI</h1>
                 <p class="text-slate-500 text-sm mt-1">ยินดีต้อนรับกลับมา! กรุณาเข้าสู่ระบบ</p>
             </div>
             <form onsubmit="handleLogin(event)" class="space-y-5">
@@ -240,8 +248,8 @@
         <aside id="sidebar" class="w-64 bg-indigo-900 text-white flex flex-col justify-between shadow-xl z-40 shrink-0 fixed inset-y-0 left-0 -translate-x-full transition-transform duration-300 md:relative md:translate-x-0">
             <div class="flex-1 flex flex-col h-full overflow-hidden">
                 <div class="p-6 text-center border-b border-indigo-800">
-                    <div class="w-16 h-16 bg-white rounded-full mx-auto mb-3 flex items-center justify-center text-indigo-700 text-2xl shadow-lg"><i class="fa-solid fa-robot"></i></div>
-                    <h1 class="text-xl font-bold tracking-wider">Come Play AI</h1>
+                    <img src="logo-mark.svg" alt="ComePlayAI" class="w-16 h-16 rounded-2xl mx-auto mb-3 shadow-lg">
+                    <h1 class="text-xl font-black tracking-wider cpa-brand-text">Come Play AI</h1>
                     <p class="text-indigo-300 text-sm mt-1">เพื่อนเสมือนของคุณ</p>
                 </div>
                 <nav id="main-nav" class="p-4 space-y-2 overflow-y-auto flex-1">
