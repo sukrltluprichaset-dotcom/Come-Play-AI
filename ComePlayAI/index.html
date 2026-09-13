@@ -1082,6 +1082,12 @@
                 document.getElementById('sidebar-overlay').classList.add('hidden');
             }
 
+            // ซ่อนปุ่มเมนู (แฮมเบอร์เกอร์) มุมซ้ายบนตอนอยู่ในห้องแชท เพราะมันวางทับปุ่ม "ย้อนกลับ"
+            // ของห้องแชทพอดี (โดยเฉพาะเวลาเปิดผ่าน in-app browser เช่น Messenger ที่ไม่มีปุ่ม back ของระบบให้ใช้)
+            // ห้องแชทมีปุ่มออกจากการสนทนาของตัวเองอยู่แล้ว จึงไม่จำเป็นต้องมีปุ่มเมนูซ้อนอยู่ตรงนั้น
+            const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+            if (sidebarToggleBtn) sidebarToggleBtn.classList.toggle('hidden', viewId === 'chat-view');
+
             // ผูกทุกการเปลี่ยนหน้ากับ browser history ของแอป เพื่อให้ปุ่ม/ท่าทาง back ของมือถือ
             // ย้อนกลับไปหน้าก่อนหน้า "ในเว็บ" (เช่น จากห้องแชทกลับไปหน้ารายชื่อ) แทนที่จะออกจากเว็บทันที
             // pushHistory = false ใช้ตอนถูกเรียกจาก popstate handler เอง กันการ push ซ้อนไม่รู้จบ
