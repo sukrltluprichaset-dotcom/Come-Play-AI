@@ -324,24 +324,28 @@
                 </div>
             </div>
 
-            <div id="create-char-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+            <div id="create-char-view" class="view-section flex-1 overflow-y-auto p-4 sm:p-8 hidden animate-fade-in">
                 <div class="max-w-3xl mx-auto">
                     <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
                     <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                        <div class="bg-indigo-600 p-6 text-white flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl backdrop-blur"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-                            <div><h2 id="create-char-title" class="text-2xl font-bold">สร้างตัวละครใหม่ (Custom Character)</h2><p id="create-char-subtitle" class="text-indigo-100 text-sm">กำหนดบุคลิก รูปร่างหน้าตา และตั้งค่าความเป็นส่วนตัว</p></div>
+                        <!-- เดิม padding/ระยะห่างของหน้านี้ใช้ค่าคงที่ (p-8, space-x-6 แบบไม่ wrap) เท่ากันหมดไม่ว่าจอกว้างแค่ไหน
+                             พอเปิดในมือถือจอแคบ พื้นที่ที่เหลือให้เนื้อหาข้างในเลยแคบมาก โดยเฉพาะแถวรูปโปรไฟล์ที่มีวงกลม
+                             ขนาดคงที่ + ปุ่ม 2 ปุ่มเบียดกันอยู่ข้าง ๆ ทำให้ดูบีบอัดไปหมด ปรับให้ padding เล็กลงบนจอแคบ
+                             และให้แถวที่เบียดกันขึ้นบรรทัดใหม่ได้ (flex-wrap) แทนการบีบให้พอดีแถวเดียวเสมอ -->
+                        <div class="bg-indigo-600 p-4 sm:p-6 text-white flex items-center space-x-4">
+                            <div class="w-12 h-12 shrink-0 bg-white/20 rounded-full flex items-center justify-center text-xl backdrop-blur"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                            <div class="min-w-0"><h2 id="create-char-title" class="text-lg sm:text-2xl font-bold">สร้างตัวละครใหม่ (Custom Character)</h2><p id="create-char-subtitle" class="text-indigo-100 text-xs sm:text-sm">กำหนดบุคลิก รูปร่างหน้าตา และตั้งค่าความเป็นส่วนตัว</p></div>
                         </div>
-                        <form id="create-char-form" class="p-8 space-y-6" onsubmit="saveCharacter(event)">
-                            <div class="flex items-center space-x-6">
-                                <div class="w-28 h-28 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 relative overflow-hidden shadow-inner" id="avatar-preview">
+                        <form id="create-char-form" class="p-4 sm:p-8 space-y-5 sm:space-y-6" onsubmit="saveCharacter(event)">
+                            <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+                                <div class="w-20 h-20 sm:w-28 sm:h-28 shrink-0 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 relative overflow-hidden shadow-inner" id="avatar-preview">
                                     <i class="fa-solid fa-image text-3xl" id="avatar-placeholder"></i>
                                     <img id="avatar-img" src="" class="hidden w-full h-full object-cover bg-amber-50">
                                     <video id="avatar-vid" src="" class="hidden w-full h-full object-cover bg-black" autoplay loop muted playsinline></video>
                                 </div>
-                                <div class="flex-1">
+                                <div class="flex-1 min-w-[200px]">
                                     <label class="block text-sm font-bold text-slate-700 mb-2">รูปภาพ / วิดีโอตัวละคร (Avatar)</label>
-                                    <div class="flex space-x-3">
+                                    <div class="flex flex-wrap gap-3">
                                         <button type="button" onclick="document.getElementById('media-upload').click()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm rounded-lg font-bold transition border border-indigo-200 flex items-center shadow-sm"><i class="fa-solid fa-cloud-arrow-up mr-2"></i> อัปโหลดไฟล์</button>
                                         <button type="button" onclick="generateRandomAvatar()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 text-sm rounded-lg font-medium transition border border-slate-300"><i class="fa-solid fa-shuffle mr-1"></i> สุ่มรูปภาพ</button>
                                     </div>
@@ -353,12 +357,12 @@
                             <div><label class="block text-sm font-bold text-slate-700 mb-2">บุคลิกนิสัย (System Prompt) <span class="text-red-500">*</span></label><textarea id="charPrompt" required rows="4" placeholder="เช่น: คุณคือสาวน้อยวัย 20 ปี ร่าเริง สดใส ให้คำปรึกษาเก่ง..." class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 resize-none"></textarea></div>
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-3">สถานะการแชร์ (Privacy)</label>
-                                <div class="flex space-x-6">
+                                <div class="flex flex-wrap gap-x-6 gap-y-3">
                                     <label class="flex items-center space-x-3 cursor-pointer"><input type="radio" name="privacy" value="public" class="w-4 h-4 text-indigo-600" checked><span class="text-slate-700"><i class="fa-solid fa-earth-americas text-indigo-500 mr-1"></i> สาธารณะ (คนอื่นหาเจอ)</span></label>
                                     <label class="flex items-center space-x-3 cursor-pointer"><input type="radio" name="privacy" value="private" class="w-4 h-4 text-indigo-600"><span class="text-slate-700"><i class="fa-solid fa-lock text-slate-400 mr-1"></i> ส่วนตัว (คุยได้คนเดียว)</span></label>
                                 </div>
                             </div>
-                            <div class="pt-6 border-t border-slate-100 flex justify-end space-x-4">
+                            <div class="pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-3">
                                 <button type="button" onclick="showView('dashboard-view', 'nav-home')" class="px-6 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium">ยกเลิก</button>
                                 <button type="submit" id="submit-char-btn" class="px-6 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg transition">บันทึกตัวละคร</button>
                             </div>
