@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 
 	"comeplayai-backend/internal/auth"
 	"comeplayai-backend/internal/models"
@@ -88,6 +89,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		req.Username, req.Email, hashedPassword,
 	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt)
 	if err != nil {
+		// เช็คว่า error เกิดจากอีเมล/ชื่อผู้ใช้ซ้ำ (unique constraint) หรือเปล่า เผื่อเคสมีคำขอสมัครสมาชิก
+		// สองรอบมาพร้อมกันพอดี (เช่นกดปุ่มซ้ำซ้อน) แล้วเช็ค "มีอยู่แล้วมั้ย" ด้านบนผ่านไปพร้อมกันทั้งคู่
+		// ก่อนที่รอบแรกจะ insert เสร็จ ถ้าเป็นแบบนี้ให้ตอบข้อความที่ตรงกับสาเหตุจริง แทนข้อความ error ทั่วไป
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return writeError(c, fiber.StatusConflict, "อีเมลหรือชื่อผู้ใช้งานนี้มีในระบบแล้ว")
+		}
 		return writeError(c, fiber.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
 	}
 

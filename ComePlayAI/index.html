@@ -1074,8 +1074,14 @@
             }
         }
 
+        let isRegistering = false; // กันกดปุ่ม "สมัครสมาชิก" ซ้ำซ้อน (double submit) ระหว่างที่คำขอก่อนหน้ายังไม่เสร็จ
         async function handleRegister(event) {
             event.preventDefault();
+            // เดิมไม่มีการกันกดซ้ำเลย ถ้าผู้ใช้กดปุ่ม "สมัครสมาชิก" 2 ครั้งติดกันเร็ว ๆ (มือถือมักเกิดบ่อย เผลอแตะซ้ำ)
+            // จะยิง request สมัครสมาชิกออกไป 2 รอบพร้อมกัน รอบแรกสร้างบัญชีสำเร็จ แต่รอบที่สองไปเจอว่าอีเมล/ชื่อผู้ใช้
+            // ซ้ำ (เพิ่งถูกสร้างจากรอบแรกไปหมาด ๆ) เลย error กลับมา ถ้าหน้าเว็บดันไปโชว์ผลของรอบที่สองที่ error
+            // ผู้ใช้ก็จะเห็นข้อความ "สมัครสมาชิกไม่สำเร็จ" ทั้งที่จริง ๆ บัญชีถูกสร้างไปแล้วจากรอบแรก เข้าสู่ระบบได้ปกติ
+            if (isRegistering) return;
             const username = document.getElementById('register-username').value;
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
@@ -1085,6 +1091,9 @@
                 generateCaptcha();
                 return;
             }
+            isRegistering = true;
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
             try {
                 await apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) });
                 showCustomAlert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบเพื่อเริ่มใช้งาน', 'สมัครสมาชิกสำเร็จ');
@@ -1094,6 +1103,9 @@
             } catch (err) {
                 showCustomAlert(err.message, 'สมัครสมาชิกไม่สำเร็จ');
                 generateCaptcha();
+            } finally {
+                isRegistering = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-60', 'cursor-not-allowed'); }
             }
         }
 
