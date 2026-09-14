@@ -537,13 +537,18 @@
 
     <!-- เดิม modal นี้ไม่มีการจำกัดความสูง/ไม่มีให้เลื่อน พอเอาไปโชว์ข้อความยาว ๆ (เช่นคำอธิบายนิสัยตัวละคร)
          การ์ดจะสูงเกินจอมือถือ ปุ่ม "ตกลง" เลยตกไปอยู่นอกจอ กดปิดไม่ได้ และตัว body หลักก็ตั้ง overflow-hidden
-         ไว้อยู่แล้วเลยเลื่อนดูส่วนที่เกินก็ไม่ได้ด้วย เพิ่ม max-height + scroll ให้การ์ดเองแก้ปัญหานี้ -->
+         ไว้อยู่แล้วเลยเลื่อนดูส่วนที่เกินก็ไม่ได้ด้วย เพิ่ม max-height + scroll ให้การ์ดเองแก้ปัญหานี้
+         และเพิ่มปุ่มปิด (X) ลอยไว้มุมบนขวาแยกจากส่วนที่เลื่อนได้ เผื่อบางคนไม่อยากอ่านจนจบ
+         จะได้กดปิดได้ทันทีโดยไม่ต้องเลื่อนลงไปหาปุ่ม "ตกลง" ที่อยู่ท้ายสุด -->
     <div id="custom-alert-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm overflow-y-auto py-8">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full max-h-[85vh] overflow-y-auto text-center mx-4 animate-pop-up">
-            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2" id="custom-alert-title">แจ้งเตือน</h3>
-            <p class="text-slate-600 mb-8 whitespace-pre-line" id="custom-alert-message">ทำรายการสำเร็จ</p>
-            <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:scale-105">ตกลง</button>
+        <div class="relative bg-white rounded-3xl shadow-2xl max-w-sm w-full max-h-[85vh] mx-4 animate-pop-up flex flex-col">
+            <button onclick="closeCustomAlert()" aria-label="ปิด" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition z-10"><i class="fa-solid fa-xmark"></i></button>
+            <div class="p-8 min-h-0 overflow-y-auto text-center">
+                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2 pr-6" id="custom-alert-title">แจ้งเตือน</h3>
+                <p class="text-slate-600 mb-8 whitespace-pre-line" id="custom-alert-message">ทำรายการสำเร็จ</p>
+                <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:scale-105">ตกลง</button>
+            </div>
         </div>
     </div>
 
