@@ -3,11 +3,17 @@ package llm
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+// ErrContentBlocked หมายถึง Gemini ปฏิเสธที่จะตอบเพราะตัวกรองความปลอดภัยของ Google เอง
+// (เช่น ข้อความมีคำหยาบ/เนื้อหาที่ผิดนโยบาย) ไม่ใช่ปัญหาระบบ/โควตา/โหลดสูงชั่วคราว
+// ลองซ้ำหรือสลับโมเดลสำรองไปก็ไม่มีทางสำเร็จ เพราะทุกโมเดลใช้ตัวกรองความปลอดภัยชุดเดียวกัน
+var ErrContentBlocked = errors.New("เนื้อหาถูกระบบความปลอดภัยของ Gemini ปฏิเสธ")
 
 type GeminiClient struct {
 	APIKey         string
@@ -57,7 +63,15 @@ type geminiResponse struct {
 		Content struct {
 			Parts []geminiPart `json:"parts"`
 		} `json:"content"`
+		// FinishReason: "STOP" = ตอบจบปกติ, "SAFETY"/"RECITATION"/"OTHER" = โมเดลปฏิเสธ/หยุดตอบ
+		// เพราะเหตุผลด้านนโยบายเนื้อหา ไม่ใช่ปัญหาระบบชั่วคราว
+		FinishReason string `json:"finishReason"`
 	} `json:"candidates"`
+	// PromptFeedback.BlockReason: กรณี Google บล็อกตั้งแต่ระดับ "คำถาม/ข้อความที่ผู้ใช้พิมพ์เข้ามา"
+	// เลย ยังไม่ทันสร้างคำตอบด้วยซ้ำ (candidates จะว่างเปล่าไปเลยในเคสนี้)
+	PromptFeedback struct {
+		BlockReason string `json:"blockReason"`
+	} `json:"promptFeedback"`
 }
 
 // callModel ยิง request ไปยังโมเดลที่ระบุ 1 ครั้ง คืนค่าคำตอบ, สถานะ "ควรลองโมเดลอื่นไหม", และ error
@@ -95,7 +109,18 @@ func (c *GeminiClient) callModel(model string, jsonBody []byte) (string, bool, e
 		return "", false, fmt.Errorf("แปลงผลลัพธ์ไม่สำเร็จ: %w", err)
 	}
 
+	// Google บล็อกตั้งแต่ตัวข้อความที่ผู้ใช้พิมพ์เข้ามาเลย (เช่นมีคำหยาบ/เนื้อหาผิดนโยบาย)
+	// เคสนี้ retryable = false เพราะลองกี่ครั้ง/สลับโมเดลไหนก็บล็อกเหมือนเดิม ไม่มีทางสำเร็จ
+	if result.PromptFeedback.BlockReason != "" {
+		return "", false, fmt.Errorf("%w (เหตุผล: %s)", ErrContentBlocked, result.PromptFeedback.BlockReason)
+	}
+
 	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
+		// ถ้ามี candidate แต่เหตุผลที่จบไม่ใช่ "STOP" ปกติ (เช่น SAFETY, RECITATION, OTHER)
+		// แปลว่าโมเดลปฏิเสธ/หยุดตอบกลางคันเพราะนโยบายเนื้อหา ไม่ใช่โหลดสูงชั่วคราว ไม่ต้อง retry
+		if len(result.Candidates) > 0 && result.Candidates[0].FinishReason != "" && result.Candidates[0].FinishReason != "STOP" {
+			return "", false, fmt.Errorf("%w (เหตุผล: %s)", ErrContentBlocked, result.Candidates[0].FinishReason)
+		}
 		return "", true, fmt.Errorf("ไม่ได้รับคำตอบจากโมเดล %s", model)
 	}
 

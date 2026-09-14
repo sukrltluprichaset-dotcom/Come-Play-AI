@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"math"
 	"sort"
@@ -175,6 +176,12 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	aiReply, err := h.Gemini.GenerateReply(fullPersonality, history, req.Message)
 	if err != nil {
 		log.Printf("Gemini API error: %v", err)
+		// เดิมพอ Gemini ปฏิเสธเพราะตัวกรองความปลอดภัย (เช่นข้อความมีคำหยาบ) จะโชว์ข้อความ
+		// "ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง" เหมือนกับตอนระบบล่มจริง ๆ ทำให้ผู้ใช้เข้าใจผิดว่ากดลองใหม่
+		// แล้วจะสำเร็จ ทั้งที่พิมพ์ข้อความเดิมซ้ำยังไงก็โดนบล็อกซ้ำแน่นอน แยกเคสนี้ออกมาบอกสาเหตุจริงแทน
+		if errors.Is(err, llm.ErrContentBlocked) {
+			return writeError(c, fiber.StatusBadRequest, "ข้อความนี้มีเนื้อหาที่ไม่เหมาะสม ระบบ AI ไม่สามารถตอบกลับได้ กรุณาลองพิมพ์ข้อความอื่น")
+		}
 		return writeError(c, fiber.StatusInternalServerError, "ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง")
 	}
 
