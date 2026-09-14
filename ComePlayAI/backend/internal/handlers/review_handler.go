@@ -39,8 +39,14 @@ func (h *ReviewHandler) CreateOrUpdate(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusBadRequest, "คะแนนต้องอยู่ระหว่าง 1-5")
 	}
 
+	tx, err := h.DB.Begin()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	defer tx.Rollback()
+
 	var exists bool
-	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, characterID).Scan(&exists); err != nil {
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, characterID).Scan(&exists); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !exists {
@@ -49,11 +55,11 @@ func (h *ReviewHandler) CreateOrUpdate(c *fiber.Ctx) error {
 
 	var review models.Review
 	var comment sql.NullString
-	err = h.DB.QueryRow(
+	err = tx.QueryRow(
 		`INSERT INTO character_reviews (character_id, user_id, rating, comment)
 		 VALUES ($1, $2, $3, $4)
 		 ON CONFLICT (character_id, user_id)
-		 DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment
+		 DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, updated_at = NOW()
 		 RETURNING review_id, character_id, user_id, rating, comment, created_at, updated_at`,
 		characterID, userID, req.Rating, req.Comment,
 	).Scan(&review.ReviewID, &review.CharacterID, &review.UserID, &review.Rating, &comment, &review.CreatedAt, &review.UpdatedAt)
@@ -62,6 +68,23 @@ func (h *ReviewHandler) CreateOrUpdate(c *fiber.Ctx) error {
 	}
 	if comment.Valid {
 		review.Comment = &comment.String
+	}
+
+	// อัปเดตคะแนนเฉลี่ย (rating) กับจำนวนรีวิว (review_count) ของตัวละครกลับไปที่ตาราง characters ด้วยทุกครั้ง
+	// เดิมโค้ดบันทึกแค่ลง character_reviews อย่างเดียว ไม่เคยอัปเดตค่าที่หน้าเว็บดึงไปแสดงผล (dashboard, ค้นหา,
+	// สถิติตัวละคร) เลยทำให้ดาวคะแนนเฉลี่ยไม่ขยับเลยหลังรีวิว เหมือนรีวิวไปแล้วไม่มีผลอะไรจริง
+	if _, err := tx.Exec(
+		`UPDATE characters SET
+			rating = COALESCE((SELECT AVG(rating) FROM character_reviews WHERE character_id = $1), 0),
+			review_count = (SELECT COUNT(*) FROM character_reviews WHERE character_id = $1)
+		 WHERE character_id = $1`,
+		characterID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกรีวิวไม่สำเร็จ")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกรีวิวไม่สำเร็จ")
 	}
 
 	_ = h.DB.QueryRow(`SELECT username FROM users WHERE user_id = $1`, userID).Scan(&review.Username)

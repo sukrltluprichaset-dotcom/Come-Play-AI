@@ -143,6 +143,11 @@
         body.dark-theme .text-red-700 { color: #f87171 !important; }
         body.dark-theme .bg-orange-50 { background-color: rgba(249, 115, 22, 0.18) !important; }
         body.dark-theme .text-orange-700 { color: #fb923c !important; }
+        /* แถบหัวห้องแชท/ป้ายคะแนนใช้ bg-white แบบมีความโปร่งใส (bg-white/90, bg-white/95) ซึ่งไม่ถูกจับคู่กับ .bg-white เฉยๆ ด้านบน
+           ทำให้ตอนเปิดธีมมืดพื้นหลังยังเป็นสีขาวอยู่ แต่ตัวหนังสือกลายเป็นสีอ่อนไปด้วย เลยมองไม่เห็นชื่อตัวละคร ต้องแก้แยกตรงนี้ */
+        body.dark-theme .bg-white\/95 { background-color: rgba(20, 17, 31, 0.92) !important; }
+        body.dark-theme .bg-white\/90 { background-color: rgba(20, 17, 31, 0.88) !important; }
+        body.dark-theme .bg-slate-50\/50 { background-color: rgba(20, 17, 31, 0.5) !important; }
         body.dark-theme .text-blue-700,
         body.dark-theme .text-blue-800 { color: #60a5fa !important; }
         body.dark-theme .text-green-500,
