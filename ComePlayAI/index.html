@@ -535,11 +535,14 @@
         </main>
     </div>
 
-    <div id="custom-alert-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center mx-4 animate-pop-up">
+    <!-- เดิม modal นี้ไม่มีการจำกัดความสูง/ไม่มีให้เลื่อน พอเอาไปโชว์ข้อความยาว ๆ (เช่นคำอธิบายนิสัยตัวละคร)
+         การ์ดจะสูงเกินจอมือถือ ปุ่ม "ตกลง" เลยตกไปอยู่นอกจอ กดปิดไม่ได้ และตัว body หลักก็ตั้ง overflow-hidden
+         ไว้อยู่แล้วเลยเลื่อนดูส่วนที่เกินก็ไม่ได้ด้วย เพิ่ม max-height + scroll ให้การ์ดเองแก้ปัญหานี้ -->
+    <div id="custom-alert-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm overflow-y-auto py-8">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full max-h-[85vh] overflow-y-auto text-center mx-4 animate-pop-up">
             <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
             <h3 class="text-xl font-bold text-slate-800 mb-2" id="custom-alert-title">แจ้งเตือน</h3>
-            <p class="text-slate-600 mb-8" id="custom-alert-message">ทำรายการสำเร็จ</p>
+            <p class="text-slate-600 mb-8 whitespace-pre-line" id="custom-alert-message">ทำรายการสำเร็จ</p>
             <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:scale-105">ตกลง</button>
         </div>
     </div>
