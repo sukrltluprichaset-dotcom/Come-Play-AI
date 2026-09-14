@@ -793,18 +793,25 @@
                     const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
                     const medalColor = medalColors[index] || 'text-slate-200';
                     const li = document.createElement('li');
-                    li.className = 'p-5 hover:bg-amber-50/30 transition flex items-center justify-between';
+                    // เดิมโชว์คำอธิบายนิสัย (personality) เป็นข้อความยาวในแถวเลย ทำให้บนมือถือจอแคบ ๆ
+                    // แถวนี้ (flex justify-between แบบไม่มี wrap) บีบจนข้อความล้น/ทับกับบล็อกคะแนนด้านขวา
+                    // เลยเปลี่ยนเป็นปุ่ม "ดูนิสัย" กดเพื่อเปิด popup แทน ไม่ต้องโชว์ค้างในแถวอีกต่อไป
+                    li.className = 'p-5 hover:bg-amber-50/30 transition flex flex-wrap items-center justify-between gap-y-3 gap-x-4';
                     li.innerHTML = `
-                        <div class="flex items-center space-x-5">
-                            <div class="w-12 text-center"><i class="fa-solid fa-medal text-3xl ${medalColor} drop-shadow-md"></i></div>
-                            <img src="${avatarUrl}" class="w-16 h-16 rounded-full border-4 border-slate-200 bg-indigo-100 shadow-sm object-cover">
-                            <div><h4 class="font-bold text-xl text-slate-800">${char.name}</h4><p class="text-sm text-slate-500">${char.personality}</p></div>
+                        <div class="flex items-center space-x-4 min-w-0">
+                            <div class="w-12 text-center shrink-0"><i class="fa-solid fa-medal text-3xl ${medalColor} drop-shadow-md"></i></div>
+                            <img src="${avatarUrl}" class="w-16 h-16 rounded-full border-4 border-slate-200 bg-indigo-100 shadow-sm object-cover shrink-0">
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-xl text-slate-800 truncate">${char.name}</h4>
+                                <button type="button" class="text-xs text-indigo-500 hover:text-indigo-700 font-bold mt-0.5" data-personality-btn><i class="fa-solid fa-circle-info mr-1"></i>ดูนิสัย</button>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-6 shrink-0">
                             <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
-                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">แชท</button>
+                            <button type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition" data-chat-btn>แชท</button>
                         </div>`;
-                    li.querySelector('button').addEventListener('click', () => enterChatRoom(char.character_id, safeName, avatarUrl, mediaType));
+                    li.querySelector('[data-chat-btn]').addEventListener('click', () => enterChatRoom(char.character_id, safeName, avatarUrl, mediaType));
+                    li.querySelector('[data-personality-btn]').addEventListener('click', () => showCustomAlert(char.personality, char.name));
                     list.appendChild(li);
                 });
             } catch (err) {
