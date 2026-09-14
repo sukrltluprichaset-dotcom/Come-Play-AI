@@ -1401,8 +1401,13 @@
             }
         }
 
+        // เดิมถ้าเข้าห้องแชทซ้อนกันเร็ว ๆ (เผลอแตะซ้ำ หรือแตะห้องอื่นก่อนที่ห้องเดิมโหลดเสร็จ) การโหลดประวัติแชท
+        // 2 รอบอาจมาถึงไม่เรียงลำดับ ทำให้ผลลัพธ์เก่าไป render ทับหลังผลลัพธ์ใหม่ (ข้อความซ้อน/ซ้ำกัน) ใช้เลข
+        // อ้างอิงคำขอ (requestId) กันเหมือนกับตอนค้นหาตัวละคร เพื่อ render แค่ผลลัพธ์ของการเข้าห้องล่าสุดจริง ๆ
+        let chatRoomRequestId = 0;
         async function enterChatRoom(characterId, name, url, type = 'image') {
             if (!Number.isInteger(characterId)) { showCustomAlert('ตัวละครนี้ยังไม่ได้เชื่อมกับระบบจริง กรุณาสร้างตัวละครใหม่แทนครับ', 'ใช้งานไม่ได้'); return; }
+            const requestId = ++chatRoomRequestId;
             currentChatCharacterId = characterId;
             currentChatCharName = name;
             chatActiveMediaUrl = url;
@@ -1432,15 +1437,17 @@
             msgContainer.innerHTML = '';
             try {
                 const history = await apiFetch(`/api/characters/${characterId}/chats`);
-                if (history.length === 0) {
-                    renderChatMessage('ai', 'สวัสดีค่ะ วันนี้เป็นยังไงบ้างคะ? เล่าให้ฉันฟังได้นะ 😊', chatActiveMediaUrl, chatActiveMediaType);
-                } else {
+                if (requestId !== chatRoomRequestId) return; // มีการเข้าห้องแชทใหม่แซงเข้ามาแล้ว ผลลัพธ์นี้เก่าไปแล้ว ไม่ต้อง render ทับ
+                // ตามที่ให้เอาข้อความทักทายอัตโนมัติ ("สวัสดีค่ะ วันนี้เป็นยังไงบ้างคะ...") ออก
+                // ห้องแชทที่ยังไม่เคยคุยกันมาก่อนจะเริ่มต้นแบบว่างเปล่า ไม่มีข้อความทักทายลอย ๆ ให้แล้ว
+                if (history.length > 0) {
                     history.forEach(chat => renderChatMessage(chat.sender_type, chat.message, chatActiveMediaUrl, chatActiveMediaType));
                     hasChattedInCurrentSession = true;
                 }
                 const scrollArea = document.getElementById('chat-history');
                 scrollArea.scrollTop = scrollArea.scrollHeight;
             } catch (err) {
+                if (requestId !== chatRoomRequestId) return;
                 showCustomAlert(err.message, 'โหลดประวัติการสนทนาไม่สำเร็จ');
             }
         }
