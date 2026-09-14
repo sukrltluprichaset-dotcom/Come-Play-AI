@@ -761,10 +761,17 @@
             }
         }
 
+        // เดิมค้นหาไม่เสถียร เพราะยิง fetch หลายรอบพร้อมกันได้ (เช่นตอนเข้าแอปครั้งแรกโหลดลิสต์ทั้งหมดไว้ค้างอยู่
+        // แล้วผู้ใช้รีบพิมพ์คำค้นตามมาทันที) พอ response ของรอบเก่า (เช่นลิสต์ทั้งหมดที่ยังไม่ได้กรอง) มาถึงทีหลัง
+        // response ของคำค้นล่าสุด มันจะ render ทับผลลัพธ์ที่ถูกต้องด้วยผลลัพธ์เก่าที่ไม่ตรงกับคำค้นเลย
+        // ใช้เลขอ้างอิงคำขอ (requestId) เพื่อเช็คว่า response ที่ได้กลับมาเป็นของคำขอล่าสุดจริงมั้ย ก่อน render
+        let searchRequestId = 0;
         async function searchPublicCharacters(query = '') {
+            const requestId = ++searchRequestId;
             try {
                 const path = query ? `/api/characters/public?q=${encodeURIComponent(query)}` : '/api/characters/public';
                 const characters = await apiFetch(path);
+                if (requestId !== searchRequestId) return; // มีคำค้นใหม่กว่าแซงเข้ามาแล้ว ผลลัพธ์นี้เก่าไปแล้ว ไม่ต้อง render ทับ
                 renderPublicCharacters(characters);
             } catch (err) {
                 console.error('ค้นหาตัวละครสาธารณะไม่สำเร็จ:', err);

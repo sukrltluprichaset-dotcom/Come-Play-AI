@@ -94,8 +94,12 @@ func (h *ActivityHandler) Claim(c *fiber.Ctx) error {
 	}
 	defer tx.Rollback()
 
+	// ระบุ completed_at = NOW() ตรง ๆ ตอน insert เสมอ เดิมโค้ดปล่อยให้คอลัมน์นี้ใช้ค่า default ของตาราง
+	// (ซึ่งดูเหมือนจะไม่มี หรือ default เป็น NULL) ทำให้เช็ค "completed_at::date = CURRENT_DATE" ด้านบน
+	// เทียบกับ NULL แล้วได้ false เสมอ (ใน SQL, NULL = อะไรก็ตามจะไม่มีวันเป็น true) เลยเหมือนกับไม่เคยรับรางวัล
+	// มาก่อนเลยสักครั้ง กดรับกี่รอบก็ผ่านเงื่อนไข "ยังไม่เคยรับวันนี้" ตลอด เป็นสาเหตุที่กดรับรางวัลได้ไม่จำกัด
 	if _, err := tx.Exec(
-		`INSERT INTO user_activities (user_id, activity_id) VALUES ($1, $2)`,
+		`INSERT INTO user_activities (user_id, activity_id, completed_at) VALUES ($1, $2, NOW())`,
 		userID, activityID,
 	); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ทำกิจกรรมไม่สำเร็จ")
