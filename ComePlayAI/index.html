@@ -983,6 +983,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             generateCaptcha(); // สุ่มรหัสยืนยันความปลอดภัยไว้ล่วงหน้า เผื่อผู้ใช้ไปหน้าสมัครสมาชิกโดยไม่ผ่าน showRegister()
+            tryAutoLogin(); // เช็ค token เก่าใน localStorage ถ้ายังใช้ได้ให้เข้าแอปเลยโดยไม่ต้องล็อกอินซ้ำ
             const toggleDark = document.getElementById('toggle-dark');
             // ธีมเข้ม (นีออนตามโลโก้) เป็นค่าเริ่มต้นของแอปแล้ว เลือกโหมดสว่างได้จากหน้าตั้งค่าถ้าต้องการ
             const isDark = localStorage.getItem('theme') !== 'light';
@@ -1050,6 +1051,39 @@
             document.getElementById('forgot-password-view').classList.remove('hidden');
         }
 
+        // เข้าสู่หน้าแอปหลักจากทั้ง 2 ทาง: ล็อกอินเองสด ๆ หรือ auto-login จาก token ที่ค้างไว้ใน localStorage
+        // แยกออกมาเป็นฟังก์ชันกลาง กันโค้ดซ้ำซ้อนระหว่าง handleLogin() กับ tryAutoLogin()
+        function enterApp(user) {
+            document.getElementById('sidebar-username').innerText = user.username;
+            document.getElementById('auth-layout').classList.add('hidden');
+            document.getElementById('app-layout').classList.remove('hidden');
+            // ตั้งหน้า dashboard เป็น "จุดฐาน" ของ history ในแอป (แทนที่ entry เดิมก่อนล็อกอิน แทนที่จะ push ซ้อนเพิ่ม)
+            // ทำให้กด back จากหน้าแรกสุดของแอปแล้วออกจากเว็บได้ตามปกติ แต่กด back จากหน้าที่ลึกกว่านั้นจะย้อนกลับในแอปแทน
+            history.replaceState({ appView: 'dashboard-view', appNav: 'nav-home' }, '', '#dashboard-view');
+            showView('dashboard-view', 'nav-home', false);
+            loadDashboardCharacters();
+            loadCoinBalance();
+            searchPublicCharacters();
+        }
+
+        // ถ้ามี token ค้างจากการล็อกอินครั้งก่อนอยู่ใน localStorage (ยังไม่หมดอายุ) ให้เข้าแอปได้เลย
+        // ไม่ต้องให้ผู้ใช้พิมพ์ username/password ซ้ำทุกครั้งที่เปิด/รีเฟรชหน้าเว็บ
+        // เช็คผ่าน /api/coins (endpoint ที่ต้องใช้ token อยู่แล้ว) ก่อนเพื่อยืนยันว่า token ยังใช้ได้จริง
+        // เผื่อกรณี token หมดอายุ/ถูกเพิกถอนไปแล้วแต่ยังค้างอยู่ใน localStorage เก่า ถ้าปล่อยผ่านไปเลยจะเข้าแอปได้
+        // แต่ทุกอย่างในนั้นโหลดไม่ขึ้นเงียบ ๆ (เหรียญ 0, ตัวละครว่างเปล่า) ผู้ใช้จะงงว่าแอปพัง
+        async function tryAutoLogin() {
+            const token = localStorage.getItem('token');
+            const userJson = localStorage.getItem('user');
+            if (!token || !userJson) return;
+            try {
+                await apiFetch('/api/coins');
+                enterApp(JSON.parse(userJson));
+            } catch (err) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -1058,17 +1092,8 @@
                 const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                document.getElementById('sidebar-username').innerText = data.user.username;
-                document.getElementById('auth-layout').classList.add('hidden');
-                document.getElementById('app-layout').classList.remove('hidden');
-                // ตั้งหน้า dashboard เป็น "จุดฐาน" ของ history ในแอป (แทนที่ entry เดิมก่อนล็อกอิน แทนที่จะ push ซ้อนเพิ่ม)
-                // ทำให้กด back จากหน้าแรกสุดของแอปแล้วออกจากเว็บได้ตามปกติ แต่กด back จากหน้าที่ลึกกว่านั้นจะย้อนกลับในแอปแทน
-                history.replaceState({ appView: 'dashboard-view', appNav: 'nav-home' }, '', '#dashboard-view');
-                showView('dashboard-view', 'nav-home', false);
+                enterApp(data.user);
                 showCustomAlert('เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับสู่ Come Play AI', 'สำเร็จ');
-                loadDashboardCharacters();
-                loadCoinBalance();
-                searchPublicCharacters();
             } catch (err) {
                 showCustomAlert(err.message, 'เข้าสู่ระบบไม่สำเร็จ');
             }

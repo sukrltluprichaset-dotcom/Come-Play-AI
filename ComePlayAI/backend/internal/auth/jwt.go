@@ -18,7 +18,9 @@ func GenerateToken(userID int64, role string, secret string) (string, error) {
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			// เดิม token อายุแค่ 24 ชม. ทำให้ผู้ใช้ต้องล็อกอินใหม่บ่อย (ต้องพิมพ์ username/password ซ้ำ)
+			// แม้จะเปิดแอปแบบ auto-login ไว้ฝั่งหน้าเว็บแล้วก็ตาม ขยายเป็น 30 วันให้สอดคล้องกับพฤติกรรม "จดจำการเข้าสู่ระบบ"
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
