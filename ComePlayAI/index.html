@@ -984,6 +984,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             generateCaptcha(); // สุ่มรหัสยืนยันความปลอดภัยไว้ล่วงหน้า เผื่อผู้ใช้ไปหน้าสมัครสมาชิกโดยไม่ผ่าน showRegister()
             tryAutoLogin(); // เช็ค token เก่าใน localStorage ถ้ายังใช้ได้ให้เข้าแอปเลยโดยไม่ต้องล็อกอินซ้ำ
+            prefillRememberedEmail(); // ถ้า auto-login ใช้ไม่ได้ (หรือไม่มี token) อย่างน้อยก็เติม username ล่าสุดไว้ในช่องให้เลย
             const toggleDark = document.getElementById('toggle-dark');
             // ธีมเข้ม (นีออนตามโลโก้) เป็นค่าเริ่มต้นของแอปแล้ว เลือกโหมดสว่างได้จากหน้าตั้งค่าถ้าต้องการ
             const isDark = localStorage.getItem('theme') !== 'light';
@@ -1011,10 +1012,20 @@
             }
         });
 
+        // จำ username/email ล่าสุดที่ล็อกอินสำเร็จไว้ในเบราว์เซอร์เครื่องนี้ (แยกจาก token ที่ใช้ auto-login)
+        // ตั้งใจให้ "จำ" อันนี้อยู่ถาวรแม้กด logout แล้วก็ตาม เพื่อให้ผู้ใช้ไม่ต้องพิมพ์ username ซ้ำทุกครั้ง
+        // ที่ต้องกลับมาหน้า login (ต่างจาก token ที่ถูกลบทิ้งตอน logout เพื่อความปลอดภัย)
+        function prefillRememberedEmail() {
+            const savedEmail = localStorage.getItem('rememberedEmail');
+            const emailInput = document.getElementById('login-email');
+            if (savedEmail && emailInput) emailInput.value = savedEmail;
+        }
+
         function showLogin() {
             document.getElementById('register-view').classList.add('hidden');
             if (document.getElementById('forgot-password-view')) document.getElementById('forgot-password-view').classList.add('hidden');
             document.getElementById('login-view').classList.remove('hidden');
+            prefillRememberedEmail();
         }
         function showRegister() {
             document.getElementById('login-view').classList.add('hidden');
@@ -1092,6 +1103,7 @@
                 const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('rememberedEmail', email); // จำ username/email ไว้ในช่อง login เครื่องนี้ต่อไป แม้ครั้งหน้าจะ logout แล้วก็ตาม
                 enterApp(data.user);
                 showCustomAlert('เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับสู่ Come Play AI', 'สำเร็จ');
             } catch (err) {
