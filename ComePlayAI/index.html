@@ -1424,8 +1424,25 @@
             return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
         }
 
+        const THAI_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        function formatChatDateSeparator(d) { return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`; } // ปี พ.ศ.
+
+        // จำวันที่ของข้อความล่าสุดที่ขึ้นไว้ในห้องแชทปัจจุบัน เพื่อเช็คว่าเปลี่ยนวันหรือยัง จะได้ขึ้นเส้นคั่นวันที่
+        // กลางแชทเหมือนแอปแชททั่วไป (LINE/Messenger) รีเซ็ตเป็น null ทุกครั้งที่เข้าห้องแชทใหม่ (ดูใน enterChatRoom)
+        let lastChatMsgDateKey = null;
+        function maybeRenderDateSeparator(d) {
+            if (isNaN(d.getTime())) return;
+            const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            if (dateKey === lastChatMsgDateKey) return;
+            lastChatMsgDateKey = dateKey;
+            document.getElementById('chat-messages').insertAdjacentHTML('beforeend',
+                `<div class="flex justify-center my-4"><span class="text-[11px] text-slate-400 bg-slate-100 px-3 py-1 rounded-full">${formatChatDateSeparator(d)}</span></div>`);
+        }
+
         function renderChatMessage(senderType, text, avatarUrl, mediaType, msgId = null, sendTime = null) {
             const msgContainer = document.getElementById('chat-messages');
+            const msgDate = sendTime ? new Date(sendTime) : new Date();
+            maybeRenderDateSeparator(msgDate);
             const timeLabel = formatChatTime(sendTime);
             if (senderType === 'user') {
                 const idAttr = msgId !== null ? ` id="chat-msg-${msgId}"` : '';
@@ -1485,6 +1502,7 @@
 
             const msgContainer = document.getElementById('chat-messages');
             msgContainer.innerHTML = '';
+            lastChatMsgDateKey = null; // ล้างค่าจากห้องก่อนหน้า กันเส้นคั่นวันที่ของห้องเก่าไปปนกับห้องใหม่
             try {
                 const history = await apiFetch(`/api/characters/${characterId}/chats`);
                 if (requestId !== chatRoomRequestId) return; // มีการเข้าห้องแชทใหม่แซงเข้ามาแล้ว ผลลัพธ์นี้เก่าไปแล้ว ไม่ต้อง render ทับ
