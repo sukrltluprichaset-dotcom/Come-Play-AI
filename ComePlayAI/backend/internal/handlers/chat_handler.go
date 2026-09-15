@@ -103,12 +103,18 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	// ในประวัติห่างจากตอนนี้นานแค่ไหน (ฟีดแบ็กผู้ใช้จริง: บางทีเอาเรื่องที่คุยเมื่อวานมาพูดถึงกับ AI วันนี้
 	// แต่ AI ตอบราวกับเพิ่งเกิดขึ้นเมื่อกี้ ทั้งที่จริงผ่านไปเป็นวันแล้ว) เพิ่ม send_time เข้ามาด้วยเพื่อ
 	// พิมพ์กำกับวันที่/เวลาไว้หน้าแต่ละข้อความในประวัติ ให้โมเดลใช้เทียบกับเวลาปัจจุบันเองได้
+	// เจอบั๊กจากการทดสอบจริง: ข้อความของผู้ใช้กับคำตอบของ AI ที่ insert ในทรานแซกชันเดียวกัน (ดูจุด insert
+	// ด้านล่าง) จะได้ค่า send_time เท่ากันเป๊ะเสมอ (Postgres: now()/CURRENT_TIMESTAMP คืนเวลาเริ่มทรานแซกชัน
+	// เดียวกันตลอดทั้งทรานแซกชัน ไม่ใช่เวลา ณ ตอน insert แต่ละคำสั่งจริง ๆ) พอเวลาเท่ากันเป๊ะ ORDER BY
+	// send_time เพียงอย่างเดียวจึงเรียงลำดับไม่แน่นอน (Postgres สุ่มลำดับแถวที่ค่าเท่ากันได้) บางทีเลยได้
+	// คำตอบ AI โผล่มาก่อนข้อความของผู้ใช้ที่ถามจริง ๆ เพิ่ม chat_id (auto-increment ตามลำดับ insert จริง)
+	// เป็นตัวตัดสินลำดับรอง ให้เรียงถูกต้องเสมอแม้ send_time จะชนกัน
 	historyRows, err := h.DB.Query(
 		`SELECT sender_type, message, send_time FROM (
-			SELECT sender_type, message, send_time FROM chats
+			SELECT sender_type, message, send_time, chat_id FROM chats
 			WHERE user_id = $1 AND character_id = $2
-			ORDER BY send_time DESC LIMIT 20
-		) recent ORDER BY send_time ASC`,
+			ORDER BY send_time DESC, chat_id DESC LIMIT 20
+		) recent ORDER BY send_time ASC, chat_id ASC`,
 		userID, characterID,
 	)
 	if err != nil {
@@ -172,7 +178,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		oldRows, err := h.DB.Query(
 			`SELECT message, embedding FROM chats
 			 WHERE user_id = $1 AND character_id = $2 AND embedding IS NOT NULL
-			 ORDER BY send_time DESC OFFSET 20 LIMIT 300`,
+			 ORDER BY send_time DESC, chat_id DESC OFFSET 20 LIMIT 300`,
 			userID, characterID,
 		)
 		if err == nil {
@@ -293,9 +299,13 @@ func (h *ChatHandler) GetHistory(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
+	// เจอบั๊กจากการทดสอบจริง: ข้อความผู้ใช้กับคำตอบ AI ที่ insert ในทรานแซกชันเดียวกันได้ send_time เท่ากันเป๊ะ
+	// (ดูคอมเมนต์อธิบายละเอียดที่จุดเดียวกันใน SendMessage ด้านบน) ORDER BY send_time อย่างเดียวเลยเรียง
+	// ลำดับไม่แน่นอนเวลาเจอค่าเท่ากัน เพิ่ม chat_id เป็นตัวตัดสินลำดับรองให้เรียงถูกต้องเสมอ (endpoint นี้คือ
+	// ตัวที่หน้าเว็บเรียกตอนเข้าห้องแชท ถ้าลำดับผิดตรงนี้ผู้ใช้จะเห็นคำตอบ AI โผล่มาก่อนข้อความที่ถามจริง)
 	rows, err := h.DB.Query(
 		`SELECT chat_id, sender_type, message, send_time, user_id, character_id
-		 FROM chats WHERE user_id = $1 AND character_id = $2 ORDER BY send_time ASC`,
+		 FROM chats WHERE user_id = $1 AND character_id = $2 ORDER BY send_time ASC, chat_id ASC`,
 		userID, characterID,
 	)
 	if err != nil {

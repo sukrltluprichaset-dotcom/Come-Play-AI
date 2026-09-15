@@ -46,9 +46,12 @@ func (h *DiaryHandler) Generate(c *fiber.Ctx) error {
 	}
 
 	rows, err := h.DB.Query(
+		// เพิ่ม chat_id เป็นตัวตัดสินลำดับรอง กันเคส send_time เท่ากันเป๊ะ (ข้อความ user/ai ที่ insert ใน
+		// ทรานแซกชันเดียวกันจะได้ send_time เท่ากัน) ทำให้เรียงบทสนทนาผิดลำดับตอนสรุปไดอารี่ (ดูรายละเอียด
+		// เพิ่มเติมที่คอมเมนต์ใน chat_handler.go)
 		`SELECT sender_type, message FROM chats
 		 WHERE user_id = $1 AND character_id = $2 AND send_time::date = CURRENT_DATE
-		 ORDER BY send_time ASC`,
+		 ORDER BY send_time ASC, chat_id ASC`,
 		userID, characterID,
 	)
 	if err != nil {
