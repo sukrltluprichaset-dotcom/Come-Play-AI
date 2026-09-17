@@ -82,12 +82,16 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	defer tx.Rollback()
 
 	var user models.User
+	var avatarURL sql.NullString
 	err = tx.QueryRow(
 		`INSERT INTO users (username, email, password, role)
 		 VALUES ($1, $2, $3, 'user')
-		 RETURNING user_id, username, email, role, created_at`,
+		 RETURNING user_id, username, email, role, created_at, avatar_url`,
 		req.Username, req.Email, hashedPassword,
-	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt)
+	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &avatarURL)
+	if avatarURL.Valid {
+		user.AvatarURL = &avatarURL.String
+	}
 	if err != nil {
 		// เช็คว่า error เกิดจากอีเมล/ชื่อผู้ใช้ซ้ำ (unique constraint) หรือเปล่า เผื่อเคสมีคำขอสมัครสมาชิก
 		// สองรอบมาพร้อมกันพอดี (เช่นกดปุ่มซ้ำซ้อน) แล้วเช็ค "มีอยู่แล้วมั้ย" ด้านบนผ่านไปพร้อมกันทั้งคู่
@@ -130,11 +134,15 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var user models.User
 	var passwordHash string
 	var isSuspended bool
+	var avatarURL sql.NullString
 	err := h.DB.QueryRow(
-		`SELECT user_id, username, email, password, role, created_at, is_suspended
+		`SELECT user_id, username, email, password, role, created_at, is_suspended, avatar_url
 		 FROM users WHERE email = $1 OR username = $1`,
 		req.Email,
-	).Scan(&user.UserID, &user.Username, &user.Email, &passwordHash, &user.Role, &user.CreatedAt, &isSuspended)
+	).Scan(&user.UserID, &user.Username, &user.Email, &passwordHash, &user.Role, &user.CreatedAt, &isSuspended, &avatarURL)
+	if avatarURL.Valid {
+		user.AvatarURL = &avatarURL.String
+	}
 
 	if err == sql.ErrNoRows {
 		return writeError(c, fiber.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน หรือรหัสผ่านไม่ถูกต้อง")
@@ -199,4 +207,42 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	}
 
 	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "เปลี่ยนรหัสผ่านสำเร็จ"})
+}
+
+// ----- Update Profile (รูปโปรไฟล์) -----
+
+type updateProfileRequest struct {
+	AvatarURL string `json:"avatar_url"`
+}
+
+// UpdateProfile บันทึก URL รูปโปรไฟล์ใหม่ของผู้ใช้ (ไฟล์รูปเองอัปโหลดผ่าน /api/uploads ที่มีอยู่แล้ว
+// endpoint นี้แค่รับ URL ที่ได้กลับมาไปบันทึกลงบัญชีผู้ใช้)
+func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
+	var req updateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+
+	req.AvatarURL = strings.TrimSpace(req.AvatarURL)
+	if req.AvatarURL == "" {
+		return writeError(c, fiber.StatusBadRequest, "ไม่พบ URL รูปโปรไฟล์")
+	}
+
+	var user models.User
+	var avatarURL sql.NullString
+	err := h.DB.QueryRow(
+		`UPDATE users SET avatar_url = $1 WHERE user_id = $2
+		 RETURNING user_id, username, email, role, created_at, avatar_url`,
+		req.AvatarURL, userID,
+	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &avatarURL)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกรูปโปรไฟล์ไม่สำเร็จ")
+	}
+	if avatarURL.Valid {
+		user.AvatarURL = &avatarURL.String
+	}
+
+	return writeJSON(c, fiber.StatusOK, user)
 }
