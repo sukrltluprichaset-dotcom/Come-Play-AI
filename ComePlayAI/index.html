@@ -409,6 +409,28 @@
                 </div>
             </div>
 
+            <div id="persona-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-masks-theater mr-2"></i> บทบาท/สถานการณ์ของคุณ</h2><p class="text-violet-100">ตั้งค่าว่าคุณเป็นใครในโลกของการสนทนา เลือกใช้บทบาทไหนไว้ AI จะพูดคุยกับคุณตามบทบาทนั้น</p></div>
+                        <i class="fa-solid fa-masks-theater absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-circle-plus text-indigo-500 mr-2"></i>สร้างบทบาทใหม่</h3>
+                        <form onsubmit="handleCreatePersona(event)" class="space-y-3">
+                            <input id="persona-name-input" type="text" maxlength="50" placeholder="ชื่อบทบาท เช่น นักผจญภัย, เพื่อนสนิท" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                            <textarea id="persona-description-input" maxlength="300" rows="3" placeholder="อธิบายบทบาท/สถานการณ์ของคุณ เช่น เป็นนักเดินทางที่เพิ่งมาถึงเมืองนี้เป็นครั้งแรก" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 resize-none" required></textarea>
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition">บันทึกบทบาทใหม่</button>
+                        </form>
+                    </div>
+
+                    <div id="persona-list" class="space-y-4"></div>
+                    <div id="persona-empty" class="hidden text-center py-10 text-slate-500 bg-white rounded-2xl border border-slate-200"><i class="fa-regular fa-face-smile text-5xl text-slate-300 mb-4"></i><p>คุณยังไม่มีบทบาทที่สร้างไว้เลย ลองสร้างบทบาทแรกของคุณด้านบนดูสิครับ</p></div>
+                </div>
+            </div>
+
             <div id="history-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
                 <div class="max-w-5xl mx-auto">
                     <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
@@ -476,6 +498,10 @@
                         <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center space-x-3"><i class="fa-solid fa-bars text-xl text-indigo-600"></i><h2 class="text-xl font-bold text-slate-800">เมนูของฉัน</h2></div>
                         <button onclick="showView('favorites-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left border-b border-slate-100">
                             <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-heart"></i></div><span class="font-bold text-slate-700">ตัวละครที่ถูกใจ / จัดเก็บ</span></div>
+                            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="showView('persona-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left">
+                            <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-violet-50 text-violet-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-masks-theater"></i></div><span class="font-bold text-slate-700">บทบาท / สถานการณ์ของคุณ</span></div>
                             <i class="fa-solid fa-chevron-right text-slate-300"></i>
                         </button>
                     </div>
@@ -966,6 +992,91 @@
             }
         }
 
+        // ----- บทบาท/สถานการณ์ของผู้ใช้ (Persona) -----
+        // ผู้ใช้ตั้งบทบาทของตัวเองไว้ได้หลายอัน แต่เลือก "ใช้งานจริง" ได้ทีละ 1 อัน ฝั่ง backend จะเอาบทบาท
+        // ที่ is_active = true ไปแทรกในพร้อมต์คุยกับ AI โดยอัตโนมัติ (ดู chat_handler.go)
+        async function loadPersonas() {
+            try {
+                const personas = await apiFetch('/api/personas');
+                const list = document.getElementById('persona-list');
+                list.innerHTML = '';
+                document.getElementById('persona-empty').classList.toggle('hidden', personas.length > 0);
+                personas.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = `bg-white rounded-2xl shadow-sm border overflow-hidden ${p.is_active ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200'}`;
+                    const safeDescription = p.description.replace(/</g, '&lt;');
+                    card.innerHTML = `
+                        <div class="p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <h4 class="font-bold text-lg text-slate-800 break-words">${p.name}</h4>
+                                    ${p.is_active ? '<span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-0.5 rounded-full shrink-0">กำลังใช้งาน</span>' : ''}
+                                </div>
+                                <p class="text-sm text-slate-500 break-words">${safeDescription}</p>
+                            </div>
+                            <div class="flex space-x-2 shrink-0">
+                                ${p.is_active
+                                    ? `<button data-clear-btn class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-lg transition whitespace-nowrap">เลิกใช้บทบาทนี้</button>`
+                                    : `<button data-activate-btn class="px-4 py-2 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 text-sm font-bold rounded-lg transition whitespace-nowrap">ใช้บทบาทนี้</button>`}
+                                <button data-delete-btn class="px-3 py-2 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-lg transition" title="ลบบทบาทนี้"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>`;
+                    if (p.is_active) {
+                        card.querySelector('[data-clear-btn]').addEventListener('click', () => clearActivePersona());
+                    } else {
+                        card.querySelector('[data-activate-btn]').addEventListener('click', () => activatePersona(p.persona_id));
+                    }
+                    card.querySelector('[data-delete-btn]').addEventListener('click', () => deletePersona(p.persona_id));
+                    list.appendChild(card);
+                });
+            } catch (err) {
+                console.error('โหลดรายการบทบาทไม่สำเร็จ:', err);
+            }
+        }
+
+        async function handleCreatePersona(event) {
+            event.preventDefault();
+            const name = document.getElementById('persona-name-input').value.trim();
+            const description = document.getElementById('persona-description-input').value.trim();
+            if (!name || !description) return;
+            try {
+                await apiFetch('/api/personas', { method: 'POST', body: JSON.stringify({ name, description }) });
+                event.target.reset();
+                loadPersonas();
+            } catch (err) {
+                showCustomAlert(err.message, 'สร้างบทบาทไม่สำเร็จ');
+            }
+        }
+
+        async function activatePersona(personaId) {
+            try {
+                await apiFetch(`/api/personas/${personaId}/activate`, { method: 'PUT' });
+                loadPersonas();
+            } catch (err) {
+                showCustomAlert(err.message, 'เลือกใช้บทบาทไม่สำเร็จ');
+            }
+        }
+
+        async function clearActivePersona() {
+            try {
+                await apiFetch('/api/personas/clear-active', { method: 'PUT' });
+                loadPersonas();
+            } catch (err) {
+                showCustomAlert(err.message, 'เลิกใช้บทบาทไม่สำเร็จ');
+            }
+        }
+
+        function deletePersona(personaId) {
+            showCustomConfirm('ต้องการลบบทบาทนี้ใช่หรือไม่?', async () => {
+                try {
+                    await apiFetch(`/api/personas/${personaId}`, { method: 'DELETE' });
+                    loadPersonas();
+                } catch (err) {
+                    showCustomAlert(err.message, 'ลบบทบาทไม่สำเร็จ');
+                }
+            });
+        }
+
         async function loadDiaryList() {
             try {
                 const diaries = await apiFetch('/api/diaries');
@@ -1376,6 +1487,7 @@
             if (viewId === 'studio-view') loadStudioStats();
             if (viewId === 'profile-view') loadProfileInfo();
             if (viewId === 'favorites-view') loadFavoriteCharacters();
+            if (viewId === 'persona-view') loadPersonas();
 
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');

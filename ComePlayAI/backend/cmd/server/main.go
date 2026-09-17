@@ -70,6 +70,14 @@ func main() {
 	app.Delete("/api/characters/:id/favorite", authMW, favoriteHandler.Remove)
 	app.Get("/api/favorites", authMW, favoriteHandler.List)
 
+	personaHandler := handlers.NewPersonaHandler(db)
+	app.Post("/api/personas", authMW, personaHandler.Create)
+	app.Get("/api/personas", authMW, personaHandler.List)
+	app.Put("/api/personas/clear-active", authMW, personaHandler.ClearActive)
+	app.Put("/api/personas/:id/activate", authMW, personaHandler.Activate)
+	app.Put("/api/personas/:id", authMW, personaHandler.Update)
+	app.Delete("/api/personas/:id", authMW, personaHandler.Delete)
+
 	reviewHandler := handlers.NewReviewHandler(db)
 	app.Post("/api/characters/:id/reviews", authMW, reviewHandler.CreateOrUpdate)
 	app.Get("/api/characters/:id/reviews", reviewHandler.List)
