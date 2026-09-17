@@ -397,6 +397,18 @@
                 </div>
             </div>
 
+            <div id="favorites-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-6xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-heart mr-2"></i> ตัวละครที่ถูกใจ</h2><p class="text-pink-100">รวมตัวละครที่คุณกดถูกใจ/จัดเก็บไว้ กดหัวใจอีกครั้งเพื่อเลิกถูกใจ</p></div>
+                        <i class="fa-solid fa-heart absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+                    <div id="favorites-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8"></div>
+                    <div id="favorites-empty" class="hidden text-center py-10 text-slate-500 bg-white rounded-2xl border border-slate-200"><i class="fa-regular fa-heart text-5xl text-slate-300 mb-4"></i><p>คุณยังไม่ได้ถูกใจตัวละครไหนไว้เลย ลองกดไอคอนหัวใจที่ตัวละครในหน้าหลักดูสิครับ</p></div>
+                </div>
+            </div>
+
             <div id="history-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
                 <div class="max-w-5xl mx-auto">
                     <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
@@ -459,6 +471,13 @@
                                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition">บันทึกการเปลี่ยนแปลง</button>
                             </div>
                         </form>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center space-x-3"><i class="fa-solid fa-bars text-xl text-indigo-600"></i><h2 class="text-xl font-bold text-slate-800">เมนูของฉัน</h2></div>
+                        <button onclick="showView('favorites-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left border-b border-slate-100">
+                            <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-heart"></i></div><span class="font-bold text-slate-700">ตัวละครที่ถูกใจ / จัดเก็บ</span></div>
+                            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -777,6 +796,7 @@
         async function searchPublicCharacters(query = '') {
             const requestId = ++searchRequestId;
             try {
+                await ensureFavoritesLoaded();
                 const path = query ? `/api/characters/public?q=${encodeURIComponent(query)}` : '/api/characters/public';
                 const characters = await apiFetch(path);
                 if (requestId !== searchRequestId) return; // มีคำค้นใหม่กว่าแซงเข้ามาแล้ว ผลลัพธ์นี้เก่าไปแล้ว ไม่ต้อง render ทับ
@@ -798,10 +818,12 @@
                 const mediaTagHTML = mediaType === 'video'
                     ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
                     : `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='${fallbackAvatarUrl}';" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                const isFav = favoritedCharacterIds.has(char.character_id);
                 const cardHTML = `
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
                         <div class="h-40 bg-indigo-100 relative overflow-hidden">
                             ${mediaTagHTML}
+                            <button onclick="event.stopPropagation(); toggleFavorite(${char.character_id}, this)" class="favorite-btn absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm transition hover:scale-110 ${isFav ? 'text-red-500' : 'text-slate-400'}" data-character-id="${char.character_id}" title="ถูกใจ"><i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i></button>
                             <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
                         </div>
                         <div class="p-4 flex flex-col flex-1">
@@ -816,6 +838,7 @@
 
         async function loadRankingList() {
             try {
+                await ensureFavoritesLoaded();
                 const characters = await apiFetch('/api/characters/popular');
                 const list = document.getElementById('ranking-list');
                 list.innerHTML = '';
@@ -826,6 +849,7 @@
                     const safeName = char.name.replace(/'/g, "\\'");
                     const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
                     const medalColor = medalColors[index] || 'text-slate-200';
+                    const isFav = favoritedCharacterIds.has(char.character_id);
                     const li = document.createElement('li');
                     // เดิมโชว์คำอธิบายนิสัย (personality) เป็นข้อความยาวในแถวเลย ทำให้บนมือถือจอแคบ ๆ
                     // แถวนี้ (flex justify-between แบบไม่มี wrap) บีบจนข้อความล้น/ทับกับบล็อกคะแนนด้านขวา
@@ -840,16 +864,105 @@
                                 <button type="button" class="text-xs text-indigo-500 hover:text-indigo-700 font-bold mt-0.5" data-personality-btn><i class="fa-solid fa-circle-info mr-1"></i>ดูนิสัย</button>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6 shrink-0">
+                        <div class="flex items-center space-x-4 shrink-0">
+                            <button type="button" class="favorite-btn w-10 h-10 rounded-full bg-slate-50 hover:scale-110 flex items-center justify-center transition ${isFav ? 'text-red-500' : 'text-slate-400'}" data-character-id="${char.character_id}" title="ถูกใจ"><i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i></button>
                             <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
                             <button type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition" data-chat-btn>แชท</button>
                         </div>`;
                     li.querySelector('[data-chat-btn]').addEventListener('click', () => enterChatRoom(char.character_id, safeName, avatarUrl, mediaType));
                     li.querySelector('[data-personality-btn]').addEventListener('click', () => showCustomAlert(char.personality, char.name));
+                    li.querySelector('.favorite-btn').addEventListener('click', function () { toggleFavorite(char.character_id, this); });
                     list.appendChild(li);
                 });
             } catch (err) {
                 console.error('โหลดอันดับยอดนิยมไม่สำเร็จ:', err);
+            }
+        }
+
+        // ----- ตัวละครที่ถูกใจ/จัดเก็บ (Favorites) -----
+        // เก็บ character_id ที่ผู้ใช้ถูกใจไว้ในตัวแปรกลาง (Set) โหลดครั้งแรกตอนที่ต้องใช้ (เช่นเปิดหน้าค้นหา/
+        // อันดับยอดนิยม) แล้ว cache ไว้ไม่ต้องยิง API ซ้ำทุกครั้ง จนกว่าจะ logout หรือมีการกดถูกใจ/เลิกถูกใจใหม่
+        let favoritedCharacterIds = new Set();
+        let favoritesLoaded = false;
+
+        async function ensureFavoritesLoaded() {
+            if (favoritesLoaded) return;
+            try {
+                const favorites = await apiFetch('/api/favorites');
+                favoritedCharacterIds = new Set(favorites.map(f => f.character_id));
+                favoritesLoaded = true;
+            } catch (err) {
+                console.error('โหลดรายการถูกใจไม่สำเร็จ:', err);
+            }
+        }
+
+        // toggleFavorite ใช้ร่วมกันทุกจุดที่มีปุ่มหัวใจ (การ์ดค้นหาสาธารณะ, แถวอันดับยอดนิยม, หน้ารายการถูกใจเอง)
+        // อัปเดต UI ปุ่มหัวใจทุกจุดในหน้าที่ตรงกับ character_id เดียวกันให้ตรงกันทันที ไม่ต้องรีเฟรชหน้า
+        async function toggleFavorite(characterId, btnEl) {
+            const isFav = favoritedCharacterIds.has(characterId);
+            try {
+                if (isFav) {
+                    await apiFetch(`/api/characters/${characterId}/favorite`, { method: 'DELETE' });
+                    favoritedCharacterIds.delete(characterId);
+                } else {
+                    await apiFetch(`/api/characters/${characterId}/favorite`, { method: 'POST' });
+                    favoritedCharacterIds.add(characterId);
+                }
+                const nowFav = favoritedCharacterIds.has(characterId);
+                document.querySelectorAll(`.favorite-btn[data-character-id="${characterId}"]`).forEach(btn => {
+                    const icon = btn.querySelector('i');
+                    btn.classList.toggle('text-red-500', nowFav);
+                    btn.classList.toggle('text-slate-400', !nowFav);
+                    if (icon) { icon.classList.toggle('fa-solid', nowFav); icon.classList.toggle('fa-regular', !nowFav); }
+                });
+
+                // ถ้ากำลังเปิดหน้ารายการถูกใจอยู่แล้วเพิ่งกดเลิกถูกใจ ให้ลบการ์ดนั้นออกจากหน้าทันที
+                if (!nowFav) {
+                    const favoritesView = document.getElementById('favorites-view');
+                    if (favoritesView && !favoritesView.classList.contains('hidden')) {
+                        const card = document.querySelector(`#favorites-grid [data-character-id="${characterId}"]`);
+                        if (card) card.remove();
+                        document.getElementById('favorites-empty').classList.toggle('hidden', document.querySelectorAll('#favorites-grid .char-card').length > 0);
+                    }
+                }
+            } catch (err) {
+                console.error('เปลี่ยนสถานะถูกใจไม่สำเร็จ:', err);
+            }
+        }
+
+        async function loadFavoriteCharacters() {
+            try {
+                const favorites = await apiFetch('/api/favorites');
+                favoritedCharacterIds = new Set(favorites.map(f => f.character_id));
+                favoritesLoaded = true;
+                const grid = document.getElementById('favorites-grid');
+                grid.innerHTML = '';
+                document.getElementById('favorites-empty').classList.toggle('hidden', favorites.length > 0);
+                favorites.forEach(char => {
+                    const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    const safeName = char.name.replace(/'/g, "\\'");
+                    const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                    const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    const mediaTagHTML = mediaType === 'video'
+                        ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
+                        : `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='${fallbackAvatarUrl}';" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                    const cardHTML = `
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in char-card" data-character-id="${char.character_id}" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
+                            <div class="h-40 bg-pink-100 relative overflow-hidden">
+                                ${mediaTagHTML}
+                                <button onclick="event.stopPropagation(); toggleFavorite(${char.character_id}, this)" class="favorite-btn absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm transition hover:scale-110 text-red-500" data-character-id="${char.character_id}" title="เลิกถูกใจ"><i class="fa-solid fa-heart"></i></button>
+                                <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                            </div>
+                            <div class="p-4 flex flex-col flex-1">
+                                <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
+                                <p class="text-xs text-slate-500 line-clamp-2 mt-1 mb-2">${char.personality}</p>
+                                <button class="bg-indigo-50 text-indigo-600 font-bold text-sm py-2 rounded-lg hover:bg-indigo-600 hover:text-white transition mt-auto" onclick="event.stopPropagation(); enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">แชทเลย</button>
+                            </div>
+                        </div>`;
+                    grid.insertAdjacentHTML('beforeend', cardHTML);
+                });
+            } catch (err) {
+                console.error('โหลดรายการถูกใจไม่สำเร็จ:', err);
             }
         }
 
@@ -1217,6 +1330,8 @@
             showCustomConfirm('คุณต้องการออกจากระบบใช่หรือไม่?', () => {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
+                favoritedCharacterIds = new Set();
+                favoritesLoaded = false;
                 document.getElementById('app-layout').classList.add('hidden');
                 document.getElementById('auth-layout').classList.remove('hidden');
                 // เคลียร์ state/หน้าที่บันทึกไว้ใน history หลัง logout กันปุ่ม back ย้อนกลับเข้าไปในแอปทั้งที่ออกจากระบบไปแล้ว
@@ -1260,6 +1375,7 @@
             if (viewId === 'diary-view') loadDiaryList();
             if (viewId === 'studio-view') loadStudioStats();
             if (viewId === 'profile-view') loadProfileInfo();
+            if (viewId === 'favorites-view') loadFavoriteCharacters();
 
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');

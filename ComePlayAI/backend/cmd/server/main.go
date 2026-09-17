@@ -65,6 +65,11 @@ func main() {
 	app.Put("/api/characters/:id", authMW, characterHandler.Update)
 	app.Delete("/api/characters/:id", authMW, characterHandler.Delete)
 
+	favoriteHandler := handlers.NewFavoriteHandler(db)
+	app.Post("/api/characters/:id/favorite", authMW, favoriteHandler.Add)
+	app.Delete("/api/characters/:id/favorite", authMW, favoriteHandler.Remove)
+	app.Get("/api/favorites", authMW, favoriteHandler.List)
+
 	reviewHandler := handlers.NewReviewHandler(db)
 	app.Post("/api/characters/:id/reviews", authMW, reviewHandler.CreateOrUpdate)
 	app.Get("/api/characters/:id/reviews", reviewHandler.List)
