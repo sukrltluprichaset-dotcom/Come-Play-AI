@@ -349,6 +349,9 @@
                     <button onclick="showDailyRewardModal()" class="relative z-10 bg-white text-indigo-600 font-bold py-3 px-6 rounded-full hover:bg-indigo-50 hover:scale-105 transition transform shadow-md flex items-center space-x-2"><i class="fa-solid fa-gift text-xl"></i><span>รับรางวัลรายวัน</span></button>
                     <i class="fa-solid fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-20"></i>
                 </div>
+
+                <div id="home-playlists-container" class="space-y-8 mb-10"></div>
+
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-6">
                     <div class="min-w-0"><h3 class="text-xl font-bold text-slate-800">เพื่อนของคุณ</h3><p class="text-sm text-slate-500">เลือกตัวละครเพื่อเริ่มการสนทนา หรือกดไอคอนดินสอเพื่อแก้ไข</p></div>
                     <div class="relative"><input type="text" id="search-input" onkeyup="filterCharacters()" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white shadow-sm"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i></div>
@@ -514,6 +517,27 @@
                 </div>
             </div>
 
+            <div id="playlist-manage-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-list-ul mr-2"></i> จัดการเพลย์ลิสต์หน้าแรก</h2><p class="text-cyan-100">จัดกลุ่มตัวละครที่ชอบเป็นเพลย์ลิสต์ของคุณเอง (เช่น "คู่จิ้น", "เพื่อนคุยเล่น") แล้วจะโชว์เป็นแถวในหน้าแรกของคุณ</p></div>
+                        <i class="fa-solid fa-list-ul absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-circle-plus text-cyan-500 mr-2"></i>สร้างเพลย์ลิสต์ใหม่</h3>
+                        <form onsubmit="handleCreatePlaylist(event)" class="flex flex-col sm:flex-row gap-3">
+                            <input id="playlist-name-input" type="text" maxlength="50" placeholder='ตั้งชื่อเพลย์ลิสต์ เช่น "คู่จิ้น", "เพื่อนคุยเล่น"' class="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-cyan-500" required>
+                            <button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition whitespace-nowrap">สร้างเพลย์ลิสต์</button>
+                        </form>
+                    </div>
+
+                    <div id="playlist-manage-list" class="space-y-4"></div>
+                    <div id="playlist-manage-empty" class="hidden text-center py-10 text-slate-500 bg-white rounded-2xl border border-slate-200"><i class="fa-regular fa-face-smile text-5xl text-slate-300 mb-4"></i><p>คุณยังไม่มีเพลย์ลิสต์เลย ลองสร้างเพลย์ลิสต์แรกของคุณด้านบนดูสิครับ</p></div>
+                </div>
+            </div>
+
             <div id="history-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
                 <div class="max-w-5xl mx-auto">
                     <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
@@ -587,8 +611,12 @@
                             <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-violet-50 text-violet-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-masks-theater"></i></div><span class="font-bold text-slate-700">บทบาท / สถานการณ์ของคุณ</span></div>
                             <i class="fa-solid fa-chevron-right text-slate-300"></i>
                         </button>
-                        <button onclick="showView('referral-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left">
+                        <button onclick="showView('referral-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left border-b border-slate-100">
                             <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-user-group"></i></div><span class="font-bold text-slate-700">ชวนเพื่อน</span></div>
+                            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="showView('playlist-manage-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left">
+                            <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-cyan-50 text-cyan-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-list-ul"></i></div><span class="font-bold text-slate-700">จัดการเพลย์ลิสต์หน้าแรก</span></div>
                             <i class="fa-solid fa-chevron-right text-slate-300"></i>
                         </button>
                     </div>
@@ -712,6 +740,22 @@
                 <button onclick="closeCustomConfirm()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition">ยกเลิก</button>
                 <button id="custom-confirm-ok-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition">ยืนยัน</button>
             </div>
+        </div>
+    </div>
+
+    <div id="playlist-add-character-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm overflow-y-auto py-8">
+        <div class="relative bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[85vh] mx-4 animate-pop-up flex flex-col">
+            <button onclick="closePlaylistAddCharacterModal()" aria-label="ปิด" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition z-10"><i class="fa-solid fa-xmark"></i></button>
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 mb-1"><i class="fa-solid fa-circle-plus text-cyan-500 mr-2"></i>เพิ่มตัวละครเข้าเพลย์ลิสต์</h3>
+                <p class="text-xs text-slate-500 mb-3" id="playlist-add-target-name"></p>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-search text-slate-400 text-sm"></i></div>
+                    <input type="text" id="playlist-add-search-input" placeholder="ค้นหาชื่อตัวละคร..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-cyan-500 text-sm">
+                </div>
+            </div>
+            <div id="playlist-add-results" class="p-3 overflow-y-auto divide-y divide-slate-50 flex-1 min-h-[200px]"></div>
+            <div id="playlist-add-empty" class="hidden text-center py-10 text-slate-400 text-sm px-6">ไม่พบตัวละครที่ตรงกับคำค้นหา</div>
         </div>
     </div>
 
@@ -1236,6 +1280,268 @@
             }
         }
 
+        // ----- เพลย์ลิสต์หน้าแรก (Home Playlists) -----
+        // ผู้ใช้จัดกลุ่มตัวละครที่ชอบเป็นเพลย์ลิสต์ของตัวเอง (เช่น "คู่จิ้น", "เพื่อนคุยเล่น") เก็บไว้ในตัวแปรกลาง
+        // userPlaylists ตัวเดียว ใช้ร่วมกันทั้งแถวในหน้าแรก (renderHomePlaylists) และหน้าจัดการ (renderPlaylistsManage)
+        let userPlaylists = [];
+        let myOwnCharactersCache = null;
+        let currentPlaylistAddTarget = null;
+        let playlistAddSearchTimeout = null;
+
+        async function loadHomePlaylists() {
+            try {
+                userPlaylists = await apiFetch('/api/playlists');
+                renderHomePlaylists();
+            } catch (err) {
+                console.error('โหลดเพลย์ลิสต์หน้าแรกไม่สำเร็จ:', err);
+            }
+        }
+
+        function buildPlaylistCharacterMiniCard(char) {
+            const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+            const safeName = char.name.replace(/'/g, "\\'");
+            const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+            const mediaTagHTML = mediaType === 'video'
+                ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
+                : `<img src="${avatarUrl}" class="w-full h-full object-cover">`;
+            return `
+                <div class="w-28 shrink-0 cursor-pointer group" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
+                    <div class="w-28 h-28 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm group-hover:shadow-md transition">${mediaTagHTML}</div>
+                    <p class="text-xs font-bold text-slate-700 mt-2 text-center truncate">${char.name}</p>
+                </div>`;
+        }
+
+        // เพลย์ลิสต์ที่ยังไม่มีตัวละครเลยจะไม่โชว์แถวในหน้าแรก กันหน้าแรกดูรกด้วยหัวข้อที่ว่างเปล่า
+        function renderHomePlaylists() {
+            const container = document.getElementById('home-playlists-container');
+            if (!container) return;
+            container.innerHTML = '';
+            userPlaylists.forEach(playlist => {
+                if (!playlist.characters || playlist.characters.length === 0) return;
+                const row = document.createElement('div');
+                row.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-list-ul text-cyan-500 mr-2"></i>${playlist.name}</h3>
+                    </div>
+                    <div class="flex space-x-4 overflow-x-auto pb-2" data-playlist-track></div>`;
+                const track = row.querySelector('[data-playlist-track]');
+                playlist.characters.forEach(char => track.insertAdjacentHTML('beforeend', buildPlaylistCharacterMiniCard(char)));
+                container.appendChild(row);
+            });
+        }
+
+        async function loadPlaylistsManage() {
+            try {
+                userPlaylists = await apiFetch('/api/playlists');
+                renderPlaylistsManage();
+                renderHomePlaylists();
+            } catch (err) {
+                console.error('โหลดเพลย์ลิสต์ไม่สำเร็จ:', err);
+            }
+        }
+
+        function renderPlaylistsManage() {
+            const list = document.getElementById('playlist-manage-list');
+            list.innerHTML = '';
+            document.getElementById('playlist-manage-empty').classList.toggle('hidden', userPlaylists.length > 0);
+
+            userPlaylists.forEach((playlist, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden';
+                const characters = playlist.characters || [];
+                const chipsHTML = characters.map(char => {
+                    const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    return `
+                        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-full pl-1.5 pr-3 py-1.5">
+                            <img src="${avatarUrl}" class="w-7 h-7 rounded-full object-cover bg-white">
+                            <span class="text-sm font-medium text-slate-700 max-w-[120px] truncate">${char.name}</span>
+                            <button data-remove-char="${char.character_id}" class="text-slate-400 hover:text-red-500 transition" title="ลบออกจากเพลย์ลิสต์"><i class="fa-solid fa-xmark"></i></button>
+                        </div>`;
+                }).join('');
+                const safeNameAttr = playlist.name.replace(/"/g, '&quot;');
+                card.innerHTML = `
+                    <div class="p-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
+                        <div class="flex items-center space-x-2 min-w-0 flex-1">
+                            <h4 class="font-bold text-lg text-slate-800 break-words">${playlist.name}</h4>
+                            <button data-rename-btn class="text-slate-400 hover:text-indigo-600 transition shrink-0" title="แก้ไขชื่อ"><i class="fa-solid fa-pen text-sm"></i></button>
+                        </div>
+                        <div class="flex items-center space-x-1 shrink-0">
+                            <button data-move-up ${index === 0 ? 'disabled' : ''} class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed" title="เลื่อนขึ้น"><i class="fa-solid fa-chevron-up"></i></button>
+                            <button data-move-down ${index === userPlaylists.length - 1 ? 'disabled' : ''} class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed" title="เลื่อนลง"><i class="fa-solid fa-chevron-down"></i></button>
+                            <button data-delete-playlist class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 flex items-center justify-center transition" title="ลบเพลย์ลิสต์"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="p-5 hidden" data-rename-form>
+                        <div class="flex gap-2">
+                            <input type="text" maxlength="50" value="${safeNameAttr}" data-rename-input class="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-cyan-500 text-sm">
+                            <button data-rename-save class="bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-bold px-4 rounded-lg transition">บันทึก</button>
+                            <button data-rename-cancel class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold px-4 rounded-lg transition">ยกเลิก</button>
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex flex-wrap gap-2 mb-3">${chipsHTML}</div>
+                        <div class="${characters.length ? 'hidden' : ''} text-sm text-slate-400 mb-3" data-no-characters>ยังไม่มีตัวละครในเพลย์ลิสต์นี้เลย</div>
+                        <button data-add-char-btn class="text-cyan-600 hover:text-cyan-800 font-bold text-sm"><i class="fa-solid fa-circle-plus mr-1"></i>เพิ่มตัวละคร</button>
+                    </div>`;
+
+                card.querySelector('[data-rename-btn]').addEventListener('click', () => {
+                    card.querySelector('[data-rename-form]').classList.toggle('hidden');
+                });
+                card.querySelector('[data-rename-cancel]').addEventListener('click', () => {
+                    card.querySelector('[data-rename-form]').classList.add('hidden');
+                    card.querySelector('[data-rename-input]').value = playlist.name;
+                });
+                card.querySelector('[data-rename-save]').addEventListener('click', () => renamePlaylist(playlist.playlist_id, card.querySelector('[data-rename-input]').value));
+                card.querySelector('[data-move-up]').addEventListener('click', () => movePlaylist(index, -1));
+                card.querySelector('[data-move-down]').addEventListener('click', () => movePlaylist(index, 1));
+                card.querySelector('[data-delete-playlist]').addEventListener('click', () => deletePlaylist(playlist.playlist_id, playlist.name));
+                card.querySelector('[data-add-char-btn]').addEventListener('click', () => openPlaylistAddCharacterModal(playlist.playlist_id, playlist.name));
+                card.querySelectorAll('[data-remove-char]').forEach(btn => {
+                    btn.addEventListener('click', () => removeCharacterFromPlaylist(playlist.playlist_id, parseInt(btn.dataset.removeChar, 10)));
+                });
+
+                list.appendChild(card);
+            });
+        }
+
+        async function handleCreatePlaylist(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('playlist-name-input');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            try {
+                await apiFetch('/api/playlists', { method: 'POST', body: JSON.stringify({ name }) });
+                nameInput.value = '';
+                loadPlaylistsManage();
+            } catch (err) {
+                showCustomAlert(err.message, 'สร้างเพลย์ลิสต์ไม่สำเร็จ');
+            }
+        }
+
+        async function renamePlaylist(playlistId, newName) {
+            newName = newName.trim();
+            if (!newName) return;
+            try {
+                await apiFetch(`/api/playlists/${playlistId}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
+                loadPlaylistsManage();
+            } catch (err) {
+                showCustomAlert(err.message, 'แก้ไขชื่อเพลย์ลิสต์ไม่สำเร็จ');
+            }
+        }
+
+        function deletePlaylist(playlistId, name) {
+            showCustomConfirm(`ต้องการลบเพลย์ลิสต์ "${name}" ใช่หรือไม่? (ตัวละครในเพลย์ลิสต์จะไม่ถูกลบไปด้วย แค่เอาออกจากเพลย์ลิสต์นี้เท่านั้น)`, async () => {
+                try {
+                    await apiFetch(`/api/playlists/${playlistId}`, { method: 'DELETE' });
+                    loadPlaylistsManage();
+                } catch (err) {
+                    showCustomAlert(err.message, 'ลบเพลย์ลิสต์ไม่สำเร็จ');
+                }
+            });
+        }
+
+        // สลับตำแหน่งเพลย์ลิสต์ index กับ index+direction ในลิสต์ที่โหลดมาแล้วก่อน (อัปเดตหน้าจอทันที)
+        // แล้วค่อยส่งลำดับใหม่ทั้งหมดไปบันทึกที่ backend ทีเดียว ถ้าบันทึกไม่สำเร็จค่อยโหลดของจริงกลับมาใหม่
+        async function movePlaylist(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= userPlaylists.length) return;
+            const reordered = [...userPlaylists];
+            [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+            userPlaylists = reordered;
+            renderPlaylistsManage();
+            try {
+                await apiFetch('/api/playlists/reorder', { method: 'PUT', body: JSON.stringify({ playlist_ids: reordered.map(p => p.playlist_id) }) });
+                renderHomePlaylists();
+            } catch (err) {
+                showCustomAlert(err.message, 'จัดลำดับเพลย์ลิสต์ไม่สำเร็จ');
+                loadPlaylistsManage();
+            }
+        }
+
+        async function removeCharacterFromPlaylist(playlistId, characterId) {
+            try {
+                await apiFetch(`/api/playlists/${playlistId}/characters/${characterId}`, { method: 'DELETE' });
+                loadPlaylistsManage();
+            } catch (err) {
+                showCustomAlert(err.message, 'ลบตัวละครออกจากเพลย์ลิสต์ไม่สำเร็จ');
+            }
+        }
+
+        // ----- Modal เพิ่มตัวละครเข้าเพลย์ลิสต์ (ค้นหารวมทั้งตัวละครของตัวเองและตัวละครสาธารณะ) -----
+        function openPlaylistAddCharacterModal(playlistId, playlistName) {
+            currentPlaylistAddTarget = playlistId;
+            document.getElementById('playlist-add-target-name').innerText = `เพิ่มเข้า "${playlistName}"`;
+            document.getElementById('playlist-add-search-input').value = '';
+            document.getElementById('playlist-add-character-modal').classList.remove('hidden');
+            searchPlaylistAddCandidates('');
+        }
+
+        function closePlaylistAddCharacterModal() {
+            document.getElementById('playlist-add-character-modal').classList.add('hidden');
+            currentPlaylistAddTarget = null;
+        }
+
+        async function searchPlaylistAddCandidates(query) {
+            try {
+                if (!myOwnCharactersCache) {
+                    myOwnCharactersCache = await apiFetch('/api/characters');
+                }
+                const publicPath = query ? `/api/characters/public?q=${encodeURIComponent(query)}` : '/api/characters/public';
+                const publicResults = await apiFetch(publicPath);
+                const q = query.trim().toLowerCase();
+                const mineFiltered = myOwnCharactersCache.filter(c => !q || c.name.toLowerCase().includes(q));
+
+                // รวมสองรายการ (ตัวละครของตัวเอง + สาธารณะ) แล้วตัดตัวซ้ำออกด้วย Map คีย์ character_id
+                const merged = new Map();
+                mineFiltered.forEach(c => merged.set(c.character_id, c));
+                publicResults.forEach(c => merged.set(c.character_id, c));
+
+                renderPlaylistAddResults(Array.from(merged.values()));
+            } catch (err) {
+                console.error('ค้นหาตัวละครไม่สำเร็จ:', err);
+            }
+        }
+
+        function renderPlaylistAddResults(characters) {
+            const container = document.getElementById('playlist-add-results');
+            container.innerHTML = '';
+            document.getElementById('playlist-add-empty').classList.toggle('hidden', characters.length > 0);
+            const targetPlaylist = userPlaylists.find(p => p.playlist_id === currentPlaylistAddTarget);
+            const memberIds = new Set(((targetPlaylist && targetPlaylist.characters) || []).map(c => c.character_id));
+
+            characters.forEach(char => {
+                const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                const isMember = memberIds.has(char.character_id);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between py-2.5 px-2';
+                row.innerHTML = `
+                    <div class="flex items-center space-x-3 min-w-0">
+                        <img src="${avatarUrl}" class="w-10 h-10 rounded-full object-cover bg-slate-100 shrink-0">
+                        <span class="font-medium text-slate-700 truncate">${char.name}</span>
+                    </div>
+                    <button class="shrink-0 text-sm font-bold px-3 py-1.5 rounded-lg transition ${isMember ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white'}" data-toggle-btn>${isMember ? 'ลบออก' : 'เพิ่ม'}</button>`;
+                row.querySelector('[data-toggle-btn]').addEventListener('click', () => togglePlaylistCharacterMembership(char.character_id, isMember));
+                container.appendChild(row);
+            });
+        }
+
+        async function togglePlaylistCharacterMembership(characterId, isMember) {
+            if (!currentPlaylistAddTarget) return;
+            try {
+                if (isMember) {
+                    await apiFetch(`/api/playlists/${currentPlaylistAddTarget}/characters/${characterId}`, { method: 'DELETE' });
+                } else {
+                    await apiFetch(`/api/playlists/${currentPlaylistAddTarget}/characters/${characterId}`, { method: 'POST' });
+                }
+                userPlaylists = await apiFetch('/api/playlists');
+                renderPlaylistsManage();
+                renderHomePlaylists();
+                searchPlaylistAddCandidates(document.getElementById('playlist-add-search-input').value.trim());
+            } catch (err) {
+                showCustomAlert(err.message, 'อัปเดตเพลย์ลิสต์ไม่สำเร็จ');
+            }
+        }
+
         async function loadDiaryList() {
             try {
                 const diaries = await apiFetch('/api/diaries');
@@ -1447,6 +1753,14 @@
                     guestSearchTimeout = setTimeout(() => searchGuestPublicCharacters(query), 300);
                 });
             }
+            const playlistAddSearchInput = document.getElementById('playlist-add-search-input');
+            if (playlistAddSearchInput) {
+                playlistAddSearchInput.addEventListener('keyup', function () {
+                    clearTimeout(playlistAddSearchTimeout);
+                    const query = this.value.trim();
+                    playlistAddSearchTimeout = setTimeout(() => searchPlaylistAddCandidates(query), 300);
+                });
+            }
             const toggleDark = document.getElementById('toggle-dark');
             // ธีมเข้ม (นีออนตามโลโก้) เป็นค่าเริ่มต้นของแอปแล้ว เลือกโหมดสว่างได้จากหน้าตั้งค่าถ้าต้องการ
             const isDark = localStorage.getItem('theme') !== 'light';
@@ -1640,6 +1954,7 @@
             loadDashboardCharacters();
             loadCoinBalance();
             searchPublicCharacters();
+            loadHomePlaylists();
         }
 
         // ถ้ามี token ค้างจากการล็อกอินครั้งก่อนอยู่ใน localStorage (ยังไม่หมดอายุ) ให้เข้าแอปได้เลย
@@ -1725,6 +2040,8 @@
                 localStorage.removeItem('user');
                 favoritedCharacterIds = new Set();
                 favoritesLoaded = false;
+                userPlaylists = [];
+                myOwnCharactersCache = null;
                 document.getElementById('app-layout').classList.add('hidden');
                 // ออกจากระบบแล้วกลับไปหน้าเรียกดูตัวละครแบบไม่ล็อกอิน (guest-view) แทนที่จะเด้งไปหน้า login
                 // ตรงๆ เลย ให้สอดคล้องกับ flow ใหม่ที่ผู้ใช้เรียกดูตัวละครได้ก่อนโดยไม่ต้องล็อกอิน
@@ -1774,6 +2091,7 @@
             if (viewId === 'favorites-view') loadFavoriteCharacters();
             if (viewId === 'persona-view') loadPersonas();
             if (viewId === 'referral-view') loadReferralInfo();
+            if (viewId === 'playlist-manage-view') loadPlaylistsManage();
 
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');

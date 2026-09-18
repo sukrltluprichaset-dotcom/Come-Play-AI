@@ -79,6 +79,15 @@ func main() {
 	app.Put("/api/personas/:id", authMW, personaHandler.Update)
 	app.Delete("/api/personas/:id", authMW, personaHandler.Delete)
 
+	playlistHandler := handlers.NewPlaylistHandler(db)
+	app.Post("/api/playlists", authMW, playlistHandler.Create)
+	app.Get("/api/playlists", authMW, playlistHandler.List)
+	app.Put("/api/playlists/reorder", authMW, playlistHandler.Reorder)
+	app.Put("/api/playlists/:id", authMW, playlistHandler.Rename)
+	app.Delete("/api/playlists/:id", authMW, playlistHandler.Delete)
+	app.Post("/api/playlists/:id/characters/:characterId", authMW, playlistHandler.AddCharacter)
+	app.Delete("/api/playlists/:id/characters/:characterId", authMW, playlistHandler.RemoveCharacter)
+
 	reviewHandler := handlers.NewReviewHandler(db)
 	app.Post("/api/characters/:id/reviews", authMW, reviewHandler.CreateOrUpdate)
 	app.Get("/api/characters/:id/reviews", reviewHandler.List)
