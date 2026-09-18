@@ -89,8 +89,13 @@ func (h *PlaylistHandler) List(c *fiber.Ctx) error {
 		return writeJSON(c, fiber.StatusOK, playlists)
 	}
 
+	// หมายเหตุ: ไม่ใช้ characterColumns (ไม่ระบุ alias ตาราง) ตรงนี้ตรงๆ เพราะ query นี้ join สองตาราง
+	// (user_playlist_characters upc + characters ch) ซึ่งมีคอลัมน์ชื่อซ้ำกัน (เช่น character_id, created_at)
+	// ทำให้ Postgres แยกไม่ออกว่าหมายถึงคอลัมน์ของตารางไหน (ambiguous) จึงต้องระบุ ch. นำหน้าทุกคอลัมน์ของ characters เอง
 	itemRows, err := h.DB.Query(
-		`SELECT upc.playlist_id, `+characterColumns+`
+		`SELECT upc.playlist_id, ch.character_id, ch.name, ch.personality, ch.avatar_url,
+		        ch.usage_count, ch.rating, ch.review_count, ch.is_shared,
+		        ch.user_id, ch.created_at, ch.updated_at
 		 FROM user_playlist_characters upc
 		 JOIN characters ch ON ch.character_id = upc.character_id
 		 WHERE upc.playlist_id = ANY($1)
