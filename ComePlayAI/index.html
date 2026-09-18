@@ -260,6 +260,13 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">โค้ดชวนเพื่อน <span class="text-slate-400 font-normal">(ถ้ามี)</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-solid fa-gift text-slate-400"></i></div>
+                        <input type="text" id="register-referral-code" placeholder="กรอกโค้ดจากเพื่อน (ไม่บังคับ)" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition text-sm uppercase">
+                    </div>
+                </div>
+                <div>
                     <label class="block text-sm font-bold text-slate-700 mb-1">รหัสยืนยันความปลอดภัย</label>
                     <div class="flex items-center space-x-3 mb-2">
                         <div id="register-captcha-code" class="select-none flex-1 text-center py-2.5 rounded-xl bg-slate-100 border border-slate-200 font-black text-2xl tracking-[0.35em]" style="font-family: 'Courier New', monospace;" aria-hidden="true">XXXXX</div>
@@ -471,6 +478,42 @@
                 </div>
             </div>
 
+            <div id="referral-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+                    <div class="bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                        <div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-user-group mr-2"></i> ชวนเพื่อน รับเหรียญฟรี</h2><p class="text-rose-100">ส่งโค้ดหรือลิงก์ของคุณให้เพื่อน เมื่อเพื่อนสมัครสมาชิกสำเร็จ คุณจะได้รับ <span class="font-bold">50 เหรียญ</span> ทันที และเพื่อนของคุณก็ได้เหรียญต้อนรับ 20 เหรียญเพิ่มด้วย!</p></div>
+                        <i class="fa-solid fa-gift absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-link text-rose-500 mr-2"></i>โค้ด/ลิงก์ชวนเพื่อนของคุณ</h3>
+                        <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                            <div id="referral-code-display" class="flex-1 text-center py-3 rounded-xl bg-slate-100 border border-slate-200 font-black text-2xl tracking-[0.35em] text-slate-700" style="font-family: 'Courier New', monospace;">------</div>
+                            <button id="referral-copy-code-btn" onclick="copyReferralCode()" class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-5 py-3 rounded-xl transition"><i class="fa-regular fa-copy mr-2"></i>คัดลอกโค้ด</button>
+                        </div>
+                        <button id="referral-copy-link-btn" onclick="copyReferralLink()" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl shadow-lg transition"><i class="fa-solid fa-share-nodes mr-2"></i>คัดลอกลิงก์ชวนเพื่อน</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center">
+                            <p class="text-3xl font-black text-rose-500" id="referral-total-invited">0</p>
+                            <p class="text-sm text-slate-500 mt-1">เพื่อนที่ชวนสำเร็จ</p>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center">
+                            <p class="text-3xl font-black text-amber-500" id="referral-total-coins">0</p>
+                            <p class="text-sm text-slate-500 mt-1">เหรียญที่ได้รับทั้งหมด</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50"><h3 class="font-bold text-slate-800"><i class="fa-solid fa-clock-rotate-left text-slate-400 mr-2"></i>ประวัติการชวนเพื่อน</h3></div>
+                        <div id="referral-history-list" class="divide-y divide-slate-100"></div>
+                        <div id="referral-history-empty" class="hidden text-center py-10 text-slate-500"><i class="fa-regular fa-face-smile text-5xl text-slate-300 mb-4"></i><p>ยังไม่มีเพื่อนสมัครผ่านโค้ดของคุณเลย ลองส่งลิงก์ให้เพื่อนดูสิครับ</p></div>
+                    </div>
+                </div>
+            </div>
+
             <div id="history-view" class="view-section flex-1 overflow-y-auto p-8 hidden animate-fade-in">
                 <div class="max-w-5xl mx-auto">
                     <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
@@ -540,8 +583,12 @@
                             <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-heart"></i></div><span class="font-bold text-slate-700">ตัวละครที่ถูกใจ / จัดเก็บ</span></div>
                             <i class="fa-solid fa-chevron-right text-slate-300"></i>
                         </button>
-                        <button onclick="showView('persona-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left">
+                        <button onclick="showView('persona-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left border-b border-slate-100">
                             <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-violet-50 text-violet-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-masks-theater"></i></div><span class="font-bold text-slate-700">บทบาท / สถานการณ์ของคุณ</span></div>
+                            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                        </button>
+                        <button onclick="showView('referral-view', '')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition text-left">
+                            <div class="flex items-center space-x-4"><div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-user-group"></i></div><span class="font-bold text-slate-700">ชวนเพื่อน</span></div>
                             <i class="fa-solid fa-chevron-right text-slate-300"></i>
                         </button>
                     </div>
@@ -1117,6 +1164,78 @@
             });
         }
 
+        // ----- ชวนเพื่อน (Referral) -----
+        // โค้ดของผู้ใช้จะถูกสร้างแบบ lazy ฝั่ง backend (ครั้งแรกที่เรียก /api/referrals ถ้ายังไม่มีโค้ดจะสร้างให้ทันที)
+        let currentReferralCode = '';
+        async function loadReferralInfo() {
+            try {
+                const info = await apiFetch('/api/referrals');
+                currentReferralCode = info.referral_code;
+                document.getElementById('referral-code-display').innerText = info.referral_code;
+                document.getElementById('referral-total-invited').innerText = info.total_invited;
+                document.getElementById('referral-total-coins').innerText = info.total_coins_earned;
+
+                const list = document.getElementById('referral-history-list');
+                list.innerHTML = '';
+                const referrals = info.referrals || [];
+                document.getElementById('referral-history-empty').classList.toggle('hidden', referrals.length > 0);
+                referrals.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'p-5 flex items-center justify-between';
+                    const joinedDate = new Date(r.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+                    row.innerHTML = `
+                        <div class="flex items-center space-x-3 min-w-0">
+                            <div class="w-9 h-9 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-user"></i></div>
+                            <div class="min-w-0"><p class="font-bold text-slate-700 truncate">${r.referred_username}</p><p class="text-xs text-slate-400">สมัครเมื่อ ${joinedDate}</p></div>
+                        </div>
+                        <span class="text-amber-500 font-bold shrink-0 ml-3"><i class="fa-solid fa-coins mr-1"></i>+${r.reward_coins}</span>`;
+                    list.appendChild(row);
+                });
+            } catch (err) {
+                console.error('โหลดข้อมูลชวนเพื่อนไม่สำเร็จ:', err);
+            }
+        }
+
+        function buildReferralLink() {
+            return `${location.origin}${location.pathname}?ref=${encodeURIComponent(currentReferralCode)}`;
+        }
+
+        async function copyTextToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                return false;
+            }
+        }
+
+        async function copyReferralCode() {
+            if (!currentReferralCode) return;
+            const ok = await copyTextToClipboard(currentReferralCode);
+            const btn = document.getElementById('referral-copy-code-btn');
+            if (ok) {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>คัดลอกแล้ว';
+                setTimeout(() => { btn.innerHTML = original; }, 1800);
+            } else {
+                showCustomAlert('คัดลอกไม่สำเร็จ กรุณาคัดลอกโค้ดด้วยตัวเอง: ' + currentReferralCode, 'คัดลอกไม่สำเร็จ');
+            }
+        }
+
+        async function copyReferralLink() {
+            if (!currentReferralCode) return;
+            const link = buildReferralLink();
+            const ok = await copyTextToClipboard(link);
+            const btn = document.getElementById('referral-copy-link-btn');
+            if (ok) {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>คัดลอกลิงก์แล้ว!';
+                setTimeout(() => { btn.innerHTML = original; }, 1800);
+            } else {
+                showCustomAlert('คัดลอกไม่สำเร็จ กรุณาคัดลอกลิงก์ด้วยตัวเอง: ' + link, 'คัดลอกไม่สำเร็จ');
+            }
+        }
+
         async function loadDiaryList() {
             try {
                 const diaries = await apiFetch('/api/diaries');
@@ -1305,6 +1424,13 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             generateCaptcha(); // สุ่มรหัสยืนยันความปลอดภัยไว้ล่วงหน้า เผื่อผู้ใช้ไปหน้าสมัครสมาชิกโดยไม่ผ่าน showRegister()
+            // ถ้ามาจากลิงก์ชวนเพื่อน (?ref=CODE) ให้เติมโค้ดในช่องสมัครสมาชิกให้อัตโนมัติ แล้วพาไปหน้าสมัครสมาชิกเลย
+            // (ถ้า tryAutoLogin ด้านล่างพบว่ามี token ที่ล็อกอินค้างอยู่แล้ว จะถูก enterApp() พาเข้าแอปทับอันนี้ไปเองภายหลัง)
+            const refCodeFromURL = new URLSearchParams(location.search).get('ref');
+            if (refCodeFromURL) {
+                document.getElementById('register-referral-code').value = refCodeFromURL.trim().toUpperCase();
+                goToRegisterFromGuest();
+            }
             tryAutoLogin(); // เช็ค token เก่าใน localStorage ถ้ายังใช้ได้ให้เข้าแอปเลยโดยไม่ต้องล็อกอินซ้ำ
             prefillRememberedEmail(); // ถ้า auto-login ใช้ไม่ได้ (หรือไม่มี token) อย่างน้อยก็เติม username ล่าสุดไว้ในช่องให้เลย
             // โหลดตัวละครสาธารณะ/อันดับยอดนิยมไว้ในหน้า guest-view ตั้งแต่แรกเลย (เป็น endpoint สาธารณะ ไม่ต้อง
@@ -1561,6 +1687,7 @@
             const username = document.getElementById('register-username').value;
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
+            const referralCode = document.getElementById('register-referral-code').value.trim();
             const captchaInput = document.getElementById('register-captcha-input').value.trim().toUpperCase();
             if (captchaInput !== currentCaptcha) {
                 showCustomAlert('รหัสยืนยันความปลอดภัยไม่ถูกต้อง กรุณาพิมพ์ตามรหัสที่แสดงใหม่อีกครั้ง', 'รหัสยืนยันไม่ถูกต้อง');
@@ -1571,7 +1698,7 @@
             const submitBtn = event.target.querySelector('button[type="submit"]');
             if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
             try {
-                await apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) });
+                await apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password, referral_code: referralCode }) });
                 showCustomAlert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบเพื่อเริ่มใช้งาน', 'สมัครสมาชิกสำเร็จ');
                 showLogin();
                 event.target.reset();
@@ -1646,6 +1773,7 @@
             if (viewId === 'profile-view') loadProfileInfo();
             if (viewId === 'favorites-view') loadFavoriteCharacters();
             if (viewId === 'persona-view') loadPersonas();
+            if (viewId === 'referral-view') loadReferralInfo();
 
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');

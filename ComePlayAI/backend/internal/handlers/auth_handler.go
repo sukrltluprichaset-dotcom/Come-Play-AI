@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,6 +13,46 @@ import (
 	"comeplayai-backend/internal/auth"
 	"comeplayai-backend/internal/models"
 )
+
+// ----- ระบบชวนเพื่อน (Referral) -----
+
+// charset กันสับสน (ไม่มี 0/O, 1/I/L) ให้เข้าชุดเดียวกับ CAPTCHA ที่ใช้ในหน้าเว็บอยู่แล้ว
+const referralCodeCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+const referralCodeLength = 6
+
+// รางวัลตอนโค้ดชวนเพื่อนถูกใช้ตอนสมัครสมาชิกสำเร็จ
+const referralRewardToReferrer = 50
+const referralBonusToReferred = 20
+
+func randomReferralCode() (string, error) {
+	code := make([]byte, referralCodeLength)
+	for i := range code {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(referralCodeCharset))))
+		if err != nil {
+			return "", err
+		}
+		code[i] = referralCodeCharset[n.Int64()]
+	}
+	return string(code), nil
+}
+
+// generateUniqueReferralCode สุ่มโค้ดชวนเพื่อนที่ไม่ซ้ำกับที่มีอยู่แล้วในระบบ (ลองใหม่ถ้าสุ่มซ้ำ)
+func (h *AuthHandler) generateUniqueReferralCode() (string, error) {
+	for attempt := 0; attempt < 10; attempt++ {
+		code, err := randomReferralCode()
+		if err != nil {
+			return "", err
+		}
+		var exists bool
+		if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE referral_code = $1)`, code).Scan(&exists); err != nil {
+			return "", err
+		}
+		if !exists {
+			return code, nil
+		}
+	}
+	return "", fmt.Errorf("ไม่สามารถสร้างโค้ดชวนเพื่อนที่ไม่ซ้ำได้")
+}
 
 type AuthHandler struct {
 	DB        *sql.DB
@@ -34,9 +77,10 @@ func writeError(c *fiber.Ctx, status int, message string) error {
 }
 
 type registerRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	ReferralCode string `json:"referral_code"`
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
@@ -47,6 +91,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	req.Username = strings.TrimSpace(req.Username)
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.ReferralCode = strings.ToUpper(strings.TrimSpace(req.ReferralCode))
 
 	if len(req.Username) < 3 || len(req.Username) > 50 {
 		return writeError(c, fiber.StatusBadRequest, "ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร")
@@ -104,6 +149,22 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	if _, err := tx.Exec(`INSERT INTO coins (balance, user_id) VALUES (0, $1)`, user.UserID); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "สมัครสมาชิกไม่สำเร็จ")
+	}
+
+	// ถ้ามีการกรอกโค้ดชวนเพื่อนมาด้วย: หาเจ้าของโค้ด ให้รางวัลทั้งสองฝ่าย แล้วบันทึกประวัติ
+	// ถ้าโค้ดไม่ถูกต้อง/ไม่พบ/หรือเป็นโค้ดของตัวเอง จะไม่ทำอะไรและไม่แจ้ง error ใดๆ (สมัครสมาชิกสำเร็จตามปกติ)
+	if req.ReferralCode != "" {
+		var referrerID int64
+		lookupErr := tx.QueryRow(`SELECT user_id FROM users WHERE referral_code = $1`, req.ReferralCode).Scan(&referrerID)
+		if lookupErr == nil && referrerID != user.UserID {
+			if _, err := tx.Exec(
+				`INSERT INTO referrals (referrer_user_id, referred_user_id, reward_coins) VALUES ($1, $2, $3)`,
+				referrerID, user.UserID, referralRewardToReferrer,
+			); err == nil {
+				_, _ = tx.Exec(`UPDATE coins SET balance = balance + $1 WHERE user_id = $2`, referralRewardToReferrer, referrerID)
+				_, _ = tx.Exec(`UPDATE coins SET balance = balance + $1 WHERE user_id = $2`, referralBonusToReferred, user.UserID)
+			}
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -245,4 +306,53 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	}
 
 	return writeJSON(c, fiber.StatusOK, user)
+}
+
+// ----- Referral (ชวนเพื่อน) -----
+
+// GetReferralInfo คืนโค้ดชวนเพื่อนของผู้ใช้ (สร้างให้อัตโนมัติถ้ายังไม่มี) พร้อมประวัติการชวนและเหรียญที่ได้รับ
+func (h *AuthHandler) GetReferralInfo(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
+	var code sql.NullString
+	if err := h.DB.QueryRow(`SELECT referral_code FROM users WHERE user_id = $1`, userID).Scan(&code); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "โหลดข้อมูลชวนเพื่อนไม่สำเร็จ")
+	}
+
+	if !code.Valid || code.String == "" {
+		newCode, err := h.generateUniqueReferralCode()
+		if err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "สร้างโค้ดชวนเพื่อนไม่สำเร็จ")
+		}
+		if _, err := h.DB.Exec(`UPDATE users SET referral_code = $1 WHERE user_id = $2`, newCode, userID); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "สร้างโค้ดชวนเพื่อนไม่สำเร็จ")
+		}
+		code = sql.NullString{String: newCode, Valid: true}
+	}
+
+	rows, err := h.DB.Query(
+		`SELECT u.username, r.reward_coins, r.created_at
+		 FROM referrals r
+		 JOIN users u ON u.user_id = r.referred_user_id
+		 WHERE r.referrer_user_id = $1
+		 ORDER BY r.created_at DESC`,
+		userID,
+	)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการชวนเพื่อนไม่สำเร็จ")
+	}
+	defer rows.Close()
+
+	info := models.ReferralInfo{ReferralCode: code.String, Referrals: []models.ReferralRecord{}}
+	for rows.Next() {
+		var rec models.ReferralRecord
+		if err := rows.Scan(&rec.ReferredUsername, &rec.RewardCoins, &rec.CreatedAt); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการชวนเพื่อนไม่สำเร็จ")
+		}
+		info.TotalCoins += rec.RewardCoins
+		info.Referrals = append(info.Referrals, rec)
+	}
+	info.TotalInvited = len(info.Referrals)
+
+	return writeJSON(c, fiber.StatusOK, info)
 }

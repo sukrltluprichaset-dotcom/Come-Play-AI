@@ -54,6 +54,7 @@ func main() {
 	app.Post("/api/auth/login", authHandler.Login)
 	app.Put("/api/auth/password", authMW, authHandler.ChangePassword)
 	app.Put("/api/profile", authMW, authHandler.UpdateProfile)
+	app.Get("/api/referrals", authMW, authHandler.GetReferralInfo)
 
 	characterHandler := handlers.NewCharacterHandler(db)
 	app.Post("/api/characters", authMW, characterHandler.Create)
