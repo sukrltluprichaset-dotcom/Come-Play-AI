@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,7 @@ func (h *PlaylistHandler) Create(c *fiber.Ctx) error {
 		userID, req.Name,
 	).Scan(&playlist.PlaylistID, &playlist.UserID, &playlist.Name, &playlist.DisplayOrder, &playlist.CreatedAt)
 	if err != nil {
+		log.Printf("[Playlist.Create] insert user_playlists ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "สร้างเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	playlist.Characters = []models.Character{}
@@ -63,6 +65,7 @@ func (h *PlaylistHandler) List(c *fiber.Ctx) error {
 		userID,
 	)
 	if err != nil {
+		log.Printf("[Playlist.List] query user_playlists ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "โหลดเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	defer playlistRows.Close()
@@ -73,6 +76,7 @@ func (h *PlaylistHandler) List(c *fiber.Ctx) error {
 	for playlistRows.Next() {
 		var p models.UserPlaylist
 		if err := playlistRows.Scan(&p.PlaylistID, &p.UserID, &p.Name, &p.DisplayOrder, &p.CreatedAt); err != nil {
+			log.Printf("[Playlist.List] scan user_playlists ล้มเหลว: %v", err)
 			return writeError(c, fiber.StatusInternalServerError, "โหลดเพลย์ลิสต์ไม่สำเร็จ")
 		}
 		p.Characters = []models.Character{}
@@ -94,6 +98,7 @@ func (h *PlaylistHandler) List(c *fiber.Ctx) error {
 		pq.Array(playlistIDs),
 	)
 	if err != nil {
+		log.Printf("[Playlist.List] query user_playlist_characters ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "โหลดเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	defer itemRows.Close()
@@ -108,6 +113,7 @@ func (h *PlaylistHandler) List(c *fiber.Ctx) error {
 			&ch.UsageCount, &ch.Rating, &ch.ReviewCount, &ch.IsShared,
 			&ch.UserID, &ch.CreatedAt, &ch.UpdatedAt,
 		); err != nil {
+			log.Printf("[Playlist.List] scan user_playlist_characters ล้มเหลว: %v", err)
 			return writeError(c, fiber.StatusInternalServerError, "โหลดเพลย์ลิสต์ไม่สำเร็จ")
 		}
 		if avatar.Valid {
@@ -141,6 +147,7 @@ func (h *PlaylistHandler) Rename(c *fiber.Ctx) error {
 
 	result, err := h.DB.Exec(`UPDATE user_playlists SET name = $1 WHERE playlist_id = $2 AND user_id = $3`, req.Name, id, userID)
 	if err != nil {
+		log.Printf("[Playlist.Rename] update user_playlists ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "แก้ไขชื่อเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
@@ -162,6 +169,7 @@ func (h *PlaylistHandler) Delete(c *fiber.Ctx) error {
 
 	result, err := h.DB.Exec(`DELETE FROM user_playlists WHERE playlist_id = $1 AND user_id = $2`, id, userID)
 	if err != nil {
+		log.Printf("[Playlist.Delete] delete user_playlists ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "ลบเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
@@ -187,6 +195,7 @@ func (h *PlaylistHandler) Reorder(c *fiber.Ctx) error {
 
 	tx, err := h.DB.Begin()
 	if err != nil {
+		log.Printf("[Playlist.Reorder] เริ่ม transaction ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	defer tx.Rollback()
@@ -197,11 +206,13 @@ func (h *PlaylistHandler) Reorder(c *fiber.Ctx) error {
 			`UPDATE user_playlists SET display_order = $1 WHERE playlist_id = $2 AND user_id = $3`,
 			i, playlistID, userID,
 		); err != nil {
+			log.Printf("[Playlist.Reorder] update display_order ล้มเหลว (playlist_id=%d): %v", playlistID, err)
 			return writeError(c, fiber.StatusInternalServerError, "จัดลำดับเพลย์ลิสต์ไม่สำเร็จ")
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
+		log.Printf("[Playlist.Reorder] commit transaction ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "จัดลำดับเพลย์ลิสต์ไม่สำเร็จ")
 	}
 
@@ -224,6 +235,7 @@ func (h *PlaylistHandler) AddCharacter(c *fiber.Ctx) error {
 
 	var ownsPlaylist bool
 	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM user_playlists WHERE playlist_id = $1 AND user_id = $2)`, playlistID, userID).Scan(&ownsPlaylist); err != nil {
+		log.Printf("[Playlist.AddCharacter] ตรวจสอบเจ้าของเพลย์ลิสต์ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !ownsPlaylist {
@@ -232,6 +244,7 @@ func (h *PlaylistHandler) AddCharacter(c *fiber.Ctx) error {
 
 	var characterExists bool
 	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, characterID).Scan(&characterExists); err != nil {
+		log.Printf("[Playlist.AddCharacter] ตรวจสอบตัวละครล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
 	}
 	if !characterExists {
@@ -244,6 +257,7 @@ func (h *PlaylistHandler) AddCharacter(c *fiber.Ctx) error {
 		 ON CONFLICT (playlist_id, character_id) DO NOTHING`,
 		playlistID, characterID,
 	); err != nil {
+		log.Printf("[Playlist.AddCharacter] insert user_playlist_characters ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "เพิ่มตัวละครเข้าเพลย์ลิสต์ไม่สำเร็จ")
 	}
 
@@ -270,6 +284,7 @@ func (h *PlaylistHandler) RemoveCharacter(c *fiber.Ctx) error {
 		playlistID, characterID, userID,
 	)
 	if err != nil {
+		log.Printf("[Playlist.RemoveCharacter] delete user_playlist_characters ล้มเหลว: %v", err)
 		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครออกจากเพลย์ลิสต์ไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
