@@ -158,7 +158,44 @@
 </head>
 <body class="dark-theme bg-slate-50 text-slate-800 h-screen overflow-hidden">
 
-    <div id="auth-layout" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 relative z-50">
+    <div id="guest-view" class="h-full w-full flex flex-col bg-slate-50 overflow-y-auto">
+        <header class="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
+            <div class="max-w-6xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <img src="logo-mark.svg" alt="ComePlayAI" class="w-9 h-9 rounded-lg">
+                    <span class="font-black text-lg cpa-brand-text">Come Play AI</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="goToRegisterFromGuest()" class="hidden sm:inline-block text-indigo-600 hover:text-indigo-800 font-bold text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 transition">สมัครสมาชิก</button>
+                    <button onclick="goToLoginFromGuest()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-2.5 rounded-lg shadow transition">เข้าสู่ระบบ</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-8">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
+                <div class="relative z-10"><h2 class="text-3xl font-bold mb-2">พูดคุยกับ AI ในแบบที่คุณต้องการ</h2><p class="text-indigo-100">สำรวจตัวละคร AI จากผู้ใช้งานทั่วโลก เข้าสู่ระบบเพื่อเริ่มพูดคุยและสร้างตัวละครของคุณเอง</p></div>
+                <i class="fa-solid fa-comments absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-6">
+                <div class="min-w-0"><h3 class="text-xl font-bold text-slate-800">สำรวจตัวละคร</h3><p class="text-sm text-slate-500">คุยกับตัวละครที่ผู้ใช้งานสร้างและแชร์ไว้ (เข้าสู่ระบบก่อนเริ่มแชท)</p></div>
+                <div class="relative"><input type="text" id="guest-public-search-input" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white shadow-sm"><i class="fa-solid fa-earth-americas absolute left-3 top-2.5 text-slate-400"></i></div>
+            </div>
+            <div id="guest-public-character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8"></div>
+            <div id="guest-public-search-empty" class="hidden text-center py-10 text-slate-500"><i class="fa-solid fa-ghost text-5xl text-slate-300 mb-4"></i><p>ไม่พบตัวละครที่คุณค้นหา</p></div>
+
+            <div class="mt-10 pt-8 border-t border-slate-200">
+                <h3 class="text-xl font-bold text-slate-800 mb-6"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>อันดับยอดนิยม</h3>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <ul id="guest-ranking-list" class="divide-y divide-slate-100"></ul>
+                    <div id="guest-ranking-empty" class="hidden text-center py-10 text-slate-500">ยังไม่มีตัวละครสาธารณะในระบบ</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="auth-layout" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 relative z-50 hidden">
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
             <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
             <div class="absolute top-1/2 -right-24 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style="animation-delay: 2s;"></div>
@@ -166,6 +203,7 @@
         </div>
 
         <div id="login-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-pop-up border border-white/20">
+            <button type="button" onclick="backToGuestView()" class="text-slate-400 hover:text-indigo-600 text-sm mb-4 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i>กลับไปเรียกดูตัวละคร</button>
             <div class="text-center mb-8">
                 <img src="logo-mark.svg" alt="ComePlayAI" class="w-20 h-20 rounded-2xl mx-auto mb-4 shadow-lg shadow-indigo-600/30">
                 <h1 class="text-2xl font-black cpa-brand-text">Come Play AI</h1>
@@ -193,6 +231,7 @@
         </div>
 
         <div id="register-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 hidden animate-pop-up border border-white/20">
+            <button type="button" onclick="backToGuestView()" class="text-slate-400 hover:text-indigo-600 text-sm mb-4 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i>กลับไปเรียกดูตัวละคร</button>
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-4 shadow-lg"><i class="fa-solid fa-user-plus"></i></div>
                 <h1 class="text-2xl font-bold text-slate-800">สร้างบัญชีใหม่</h1>
@@ -237,6 +276,7 @@
         </div>
 
         <div id="forgot-password-view" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 hidden animate-pop-up border border-white/20">
+            <button type="button" onclick="backToGuestView()" class="text-slate-400 hover:text-indigo-600 text-sm mb-4 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i>กลับไปเรียกดูตัวละคร</button>
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-4 shadow-lg"><i class="fa-solid fa-key"></i></div>
                 <h1 class="text-2xl font-bold text-slate-800">ลืมรหัสผ่าน?</h1>
@@ -1267,6 +1307,20 @@
             generateCaptcha(); // สุ่มรหัสยืนยันความปลอดภัยไว้ล่วงหน้า เผื่อผู้ใช้ไปหน้าสมัครสมาชิกโดยไม่ผ่าน showRegister()
             tryAutoLogin(); // เช็ค token เก่าใน localStorage ถ้ายังใช้ได้ให้เข้าแอปเลยโดยไม่ต้องล็อกอินซ้ำ
             prefillRememberedEmail(); // ถ้า auto-login ใช้ไม่ได้ (หรือไม่มี token) อย่างน้อยก็เติม username ล่าสุดไว้ในช่องให้เลย
+            // โหลดตัวละครสาธารณะ/อันดับยอดนิยมไว้ในหน้า guest-view ตั้งแต่แรกเลย (เป็น endpoint สาธารณะ ไม่ต้อง
+            // ล็อกอินก็เรียกได้) เผื่อ tryAutoLogin ด้านบนใช้ไม่ได้ ผู้ใช้จะได้เห็นเนื้อหาให้เรียกดูทันทีโดยไม่ต้อง
+            // รอกดอะไรก่อน ถ้า auto-login สำเร็จ guest-view จะถูกซ่อนไปเองใน enterApp() อยู่แล้ว ไม่เสียหายอะไร
+            searchGuestPublicCharacters();
+            loadGuestRankingList();
+            const guestPublicSearchInput = document.getElementById('guest-public-search-input');
+            if (guestPublicSearchInput) {
+                let guestSearchTimeout = null;
+                guestPublicSearchInput.addEventListener('keyup', function () {
+                    clearTimeout(guestSearchTimeout);
+                    const query = this.value.trim();
+                    guestSearchTimeout = setTimeout(() => searchGuestPublicCharacters(query), 300);
+                });
+            }
             const toggleDark = document.getElementById('toggle-dark');
             // ธีมเข้ม (นีออนตามโลโก้) เป็นค่าเริ่มต้นของแอปแล้ว เลือกโหมดสว่างได้จากหน้าตั้งค่าถ้าต้องการ
             const isDark = localStorage.getItem('theme') !== 'light';
@@ -1301,6 +1355,106 @@
             const savedEmail = localStorage.getItem('rememberedEmail');
             const emailInput = document.getElementById('login-email');
             if (savedEmail && emailInput) emailInput.value = savedEmail;
+        }
+
+        // ----- หน้าเรียกดูตัวละครแบบไม่ล็อกอิน (Guest view) -----
+        // เข้าเว็บครั้งแรกให้เห็นหน้านี้ก่อน (เฉพาะส่วนสาธารณะ: ค้นหาตัวละคร + อันดับยอดนิยม ใช้ endpoint ที่ไม่
+        // ต้องล็อกอินอยู่แล้ว) มีปุ่ม "เข้าสู่ระบบ" อยู่ด้านบนให้กดไปหน้า login เอง ถ้ากดจะแชท/ถูกใจตัวละครจะขึ้น
+        // ป็อปอัปแจ้งให้ล็อกอินก่อนเสมอ (ยังไม่ผูก token จึงคุยจริงไม่ได้)
+        let guestSearchRequestId = 0;
+        async function searchGuestPublicCharacters(query = '') {
+            const requestId = ++guestSearchRequestId;
+            try {
+                const path = query ? `/api/characters/public?q=${encodeURIComponent(query)}` : '/api/characters/public';
+                const characters = await apiFetch(path);
+                if (requestId !== guestSearchRequestId) return;
+                renderGuestPublicCharacters(characters);
+            } catch (err) {
+                console.error('ค้นหาตัวละครสาธารณะไม่สำเร็จ (guest):', err);
+            }
+        }
+
+        function renderGuestPublicCharacters(characters) {
+            const grid = document.getElementById('guest-public-character-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            document.getElementById('guest-public-search-empty').classList.toggle('hidden', characters.length > 0);
+            characters.forEach(char => {
+                const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                const mediaType = isVideoFile(avatarUrl) ? 'video' : 'image';
+                const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                const mediaTagHTML = mediaType === 'video'
+                    ? `<video src="${avatarUrl}" class="w-full h-full object-cover" autoplay loop muted playsinline></video>`
+                    : `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='${fallbackAvatarUrl}';" class="w-full h-full object-cover p-4 transition-transform group-hover:scale-110">`;
+                const cardHTML = `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in" onclick="promptGuestLogin()">
+                        <div class="h-40 bg-indigo-100 relative overflow-hidden">
+                            ${mediaTagHTML}
+                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                        </div>
+                        <div class="p-4 flex flex-col flex-1">
+                            <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
+                            <p class="text-xs text-slate-500 line-clamp-2 mt-1 mb-2">${char.personality}</p>
+                            <button class="bg-indigo-50 text-indigo-600 font-bold text-sm py-2 rounded-lg hover:bg-indigo-600 hover:text-white transition mt-auto" onclick="event.stopPropagation(); promptGuestLogin()">แชทเลย</button>
+                        </div>
+                    </div>`;
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        async function loadGuestRankingList() {
+            try {
+                const characters = await apiFetch('/api/characters/popular');
+                const list = document.getElementById('guest-ranking-list');
+                if (!list) return;
+                list.innerHTML = '';
+                document.getElementById('guest-ranking-empty').classList.toggle('hidden', characters.length > 0);
+                const medalColors = ['text-yellow-400', 'text-slate-300', 'text-amber-600'];
+                characters.forEach((char, index) => {
+                    const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
+                    const medalColor = medalColors[index] || 'text-slate-200';
+                    const li = document.createElement('li');
+                    li.className = 'p-5 hover:bg-amber-50/30 transition flex flex-wrap items-center justify-between gap-y-3 gap-x-4 cursor-pointer';
+                    li.innerHTML = `
+                        <div class="flex items-center space-x-4 min-w-0">
+                            <div class="w-12 text-center shrink-0"><i class="fa-solid fa-medal text-3xl ${medalColor} drop-shadow-md"></i></div>
+                            <img src="${avatarUrl}" class="w-16 h-16 rounded-full border-4 border-slate-200 bg-indigo-100 shadow-sm object-cover shrink-0">
+                            <div class="min-w-0"><h4 class="font-bold text-xl text-slate-800 truncate">${char.name}</h4></div>
+                        </div>
+                        <div class="flex items-center space-x-6 shrink-0">
+                            <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
+                            <button type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition" data-chat-btn>แชท</button>
+                        </div>`;
+                    li.querySelector('[data-chat-btn]').addEventListener('click', (e) => { e.stopPropagation(); promptGuestLogin(); });
+                    li.addEventListener('click', () => promptGuestLogin());
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                console.error('โหลดอันดับยอดนิยมไม่สำเร็จ (guest):', err);
+            }
+        }
+
+        function promptGuestLogin() {
+            showCustomConfirm('กรุณาเข้าสู่ระบบก่อนเริ่มพูดคุยกับตัวละคร', () => {
+                goToLoginFromGuest();
+            });
+        }
+
+        function goToLoginFromGuest() {
+            document.getElementById('guest-view').classList.add('hidden');
+            document.getElementById('auth-layout').classList.remove('hidden');
+            showLogin();
+        }
+
+        function goToRegisterFromGuest() {
+            document.getElementById('guest-view').classList.add('hidden');
+            document.getElementById('auth-layout').classList.remove('hidden');
+            showRegister();
+        }
+
+        function backToGuestView() {
+            document.getElementById('auth-layout').classList.add('hidden');
+            document.getElementById('guest-view').classList.remove('hidden');
         }
 
         function showLogin() {
@@ -1350,6 +1504,7 @@
             document.getElementById('sidebar-username').innerText = user.username;
             const sidebarAvatarUrl = resolveMediaUrl(user.avatar_url);
             if (sidebarAvatarUrl) document.getElementById('sidebar-avatar').src = sidebarAvatarUrl;
+            document.getElementById('guest-view').classList.add('hidden');
             document.getElementById('auth-layout').classList.add('hidden');
             document.getElementById('app-layout').classList.remove('hidden');
             // ตั้งหน้า dashboard เป็น "จุดฐาน" ของ history ในแอป (แทนที่ entry เดิมก่อนล็อกอิน แทนที่จะ push ซ้อนเพิ่ม)
@@ -1444,10 +1599,13 @@
                 favoritedCharacterIds = new Set();
                 favoritesLoaded = false;
                 document.getElementById('app-layout').classList.add('hidden');
-                document.getElementById('auth-layout').classList.remove('hidden');
+                // ออกจากระบบแล้วกลับไปหน้าเรียกดูตัวละครแบบไม่ล็อกอิน (guest-view) แทนที่จะเด้งไปหน้า login
+                // ตรงๆ เลย ให้สอดคล้องกับ flow ใหม่ที่ผู้ใช้เรียกดูตัวละครได้ก่อนโดยไม่ต้องล็อกอิน
+                document.getElementById('guest-view').classList.remove('hidden');
                 // เคลียร์ state/หน้าที่บันทึกไว้ใน history หลัง logout กันปุ่ม back ย้อนกลับเข้าไปในแอปทั้งที่ออกจากระบบไปแล้ว
                 history.replaceState(null, '', location.pathname + location.search);
-                showLogin();
+                searchGuestPublicCharacters();
+                loadGuestRankingList();
             });
         }
 
