@@ -17,6 +17,11 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-pop-up { animation: popUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes popUp { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        /* จุดสามจุดกระพริบแบบ "กำลังพิมพ์..." ตอนรอ AI ตอบกลับในห้องแชท */
+        @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+        .typing-dot { width: 6px; height: 6px; border-radius: 9999px; background-color: currentColor; display: inline-block; animation: typingBounce 1.2s infinite ease-in-out; }
+        .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.3s; }
         .payment-radio:checked + div { border-color: #4f46e5; background-color: #eef2ff; }
         .payment-radio:checked + div .check-icon { opacity: 1; transform: scale(1); }
         .star-rating i { cursor: pointer; transition: color 0.2s, transform 0.1s; color: #cbd5e1; }
@@ -2360,6 +2365,30 @@
             }
         }
 
+        // แสดงบับเบิล "กำลังพิมพ์..." (จุดสามจุดกระพริบ) ต่อท้ายแชท ระหว่างรอ AI ตอบกลับ
+        // ใช้ id คงที่กันไม่ให้โผล่ซ้อนกันหลายอันถ้าเผลอเรียกซ้ำ
+        function showTypingIndicator() {
+            if (document.getElementById('chat-typing-indicator')) return;
+            const avatarHTML = chatActiveMediaType === 'video'
+                ? `<video class="absolute inset-0 w-full h-full object-cover" src="${chatActiveMediaUrl}" autoplay loop muted playsinline></video>`
+                : `<img class="absolute inset-0 w-full h-full object-cover ${chatActiveMediaUrl.includes('dicebear') ? 'p-1' : ''}" src="${chatActiveMediaUrl}" onerror="this.onerror=null;this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(currentChatCharName || 'default')}';">`;
+            document.getElementById('chat-messages').insertAdjacentHTML('beforeend', `
+                <div id="chat-typing-indicator" class="flex flex-col items-start self-start max-w-[85%] animate-fade-in mt-4">
+                    <div class="flex items-end space-x-3">
+                        <div class="w-10 h-10 rounded-full border border-slate-200 overflow-hidden relative flex-shrink-0 bg-white">${avatarHTML}</div>
+                        <div class="bg-white text-slate-400 px-4 py-3.5 rounded-2xl rounded-bl-none shadow-md border border-slate-100 flex items-center space-x-1">
+                            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                        </div>
+                    </div>
+                </div>`);
+            const scrollArea = document.getElementById('chat-history');
+            if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
+        }
+        function hideTypingIndicator() {
+            const el = document.getElementById('chat-typing-indicator');
+            if (el) el.remove();
+        }
+
         // เดิมถ้าเข้าห้องแชทซ้อนกันเร็ว ๆ (เผลอแตะซ้ำ หรือแตะห้องอื่นก่อนที่ห้องเดิมโหลดเสร็จ) การโหลดประวัติแชท
         // 2 รอบอาจมาถึงไม่เรียงลำดับ ทำให้ผลลัพธ์เก่าไป render ทับหลังผลลัพธ์ใหม่ (ข้อความซ้อน/ซ้ำกัน) ใช้เลข
         // อ้างอิงคำขอ (requestId) กันเหมือนกับตอนค้นหาตัวละคร เพื่อ render แค่ผลลัพธ์ของการเข้าห้องล่าสุดจริง ๆ
@@ -2404,6 +2433,7 @@
                     history.forEach(chat => renderChatMessage(chat.sender_type, chat.message, chatActiveMediaUrl, chatActiveMediaType, null, chat.send_time));
                     hasChattedInCurrentSession = true;
                 }
+                if (stillBusy) showTypingIndicator(); // ห้องนี้มีข้อความค้างรอ AI ตอบอยู่เบื้องหลัง ให้โชว์ "กำลังพิมพ์..." ทันทีที่เข้ามา
                 const scrollArea = document.getElementById('chat-history');
                 scrollArea.scrollTop = scrollArea.scrollHeight;
             } catch (err) {
@@ -2448,11 +2478,13 @@
                 }
                 const scrollArea = document.getElementById('chat-history');
                 scrollArea.scrollTop = scrollArea.scrollHeight;
+                showTypingIndicator(); // ส่งข้อความแล้ว โชว์ "กำลังพิมพ์..." ระหว่างรอ AI ตอบกลับ
             }
 
             try {
                 const data = await apiFetch(`/api/characters/${characterId}/chats`, { method: 'POST', body: JSON.stringify({ message: text }) });
                 if (isActiveRoom()) {
+                    hideTypingIndicator();
                     hasChattedInCurrentSession = true;
                     renderChatMessage('ai', data.ai_message.message, chatActiveMediaUrl, chatActiveMediaType, null, data.ai_message.send_time);
                     document.getElementById('user-coin-balance').innerText = data.coin_balance.toLocaleString();
@@ -2463,6 +2495,7 @@
                 // แสดง alert เหมือนเดิม แต่เพิ่มการทำเครื่องหมายที่ข้อความจริงๆ ด้วย (ถ้ายังอยู่ห้องเดิม)
                 // เผื่อผู้ใช้กดออกจากห้องแชทไปก่อนที่จะเห็น alert (จะได้ไม่รู้สึกว่าข้อความ "หายเงียบๆ")
                 if (isActiveRoom()) {
+                    hideTypingIndicator();
                     const el = statusEl();
                     if (el) {
                         el.classList.remove('hidden');
