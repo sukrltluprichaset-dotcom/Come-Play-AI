@@ -315,7 +315,7 @@
         </button>
         <aside id="sidebar" class="w-64 bg-indigo-900 text-white flex flex-col justify-between shadow-xl z-40 shrink-0 fixed inset-y-0 left-0 -translate-x-full transition-transform duration-300 md:relative md:translate-x-0">
             <div class="flex-1 flex flex-col h-full overflow-hidden">
-                <div class="p-6 text-center border-b border-indigo-800">
+                <div class="p-6 text-center border-b border-indigo-800 cursor-pointer hover:bg-indigo-800/40 transition" onclick="showView('dashboard-view', 'nav-home')" title="กลับหน้าแรก">
                     <img src="logo-mark.svg" alt="ComePlayAI" class="w-16 h-16 rounded-2xl mx-auto mb-3 shadow-lg">
                     <h1 class="text-xl font-black tracking-wider cpa-brand-text">Come Play AI</h1>
                     <p class="text-indigo-300 text-sm mt-1">เพื่อนเสมือนของคุณ</p>
@@ -591,8 +591,8 @@
                                 <div><h3 class="font-bold text-slate-800">รูปโปรไฟล์</h3><p id="profile-avatar-status" class="text-xs text-slate-500 mt-1">คลิกไอคอนกล้องเพื่อเปลี่ยนรูปโปรไฟล์</p></div>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน (Username)</label><input id="profile-username" type="text" readonly class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"></div>
-                                <div><label class="block text-sm font-bold text-slate-700 mb-2">อีเมล (Email)</label><input id="profile-email" type="email" readonly class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"></div>
+                                <div><label class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน (Username)</label><input id="profile-username" type="text" maxlength="50" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></div>
+                                <div><label class="block text-sm font-bold text-slate-700 mb-2">อีเมล (Email)</label><input id="profile-email" type="email" readonly title="อีเมลใช้ยืนยันตัวตนของบัญชี แก้ไขไม่ได้" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"></div>
                             </div>
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-2">เปลี่ยนรหัสผ่าน (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
@@ -1960,6 +1960,7 @@
             loadCoinBalance();
             searchPublicCharacters();
             loadHomePlaylists();
+            refreshDailyRewardBanner();
         }
 
         // ถ้ามี token ค้างจากการล็อกอินครั้งก่อนอยู่ใน localStorage (ยังไม่หมดอายุ) ให้เข้าแอปได้เลย
@@ -2135,17 +2136,43 @@
             const oldPassword = document.getElementById('profile-old-password').value;
             const newPassword = document.getElementById('profile-new-password').value;
             const confirmPassword = document.getElementById('profile-confirm-password').value;
-            if (!oldPassword && !newPassword && !confirmPassword) { showView('dashboard-view', 'nav-home'); return; }
-            if (!oldPassword || !newPassword || !confirmPassword) { showCustomAlert('กรุณากรอกรหัสผ่านให้ครบทั้ง 3 ช่อง', 'ข้อมูลไม่ครบ'); return; }
-            if (newPassword !== confirmPassword) { showCustomAlert('รหัสผ่านใหม่และรหัสยืนยันไม่ตรงกัน', 'ข้อมูลไม่ตรงกัน'); return; }
-            if (newPassword.length < 8) { showCustomAlert('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร', 'รหัสผ่านสั้นเกินไป'); return; }
+            const wantsPasswordChange = !!(oldPassword || newPassword || confirmPassword);
+
+            // เช็คว่าชื่อผู้ใช้งานถูกแก้ไปจากเดิมหรือไม่ (อีเมลแก้ไม่ได้ ตั้งใจไม่มีให้เทียบ/ส่งค่านี้เลย)
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            const newUsername = document.getElementById('profile-username').value.trim();
+            const usernameChanged = newUsername !== '' && newUsername !== currentUser.username;
+
+            if (!wantsPasswordChange && !usernameChanged) { showView('dashboard-view', 'nav-home'); return; }
+            if (usernameChanged && (newUsername.length < 3 || newUsername.length > 50)) {
+                showCustomAlert('ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร', 'ชื่อผู้ใช้ไม่ถูกต้อง'); return;
+            }
+            if (wantsPasswordChange) {
+                if (!oldPassword || !newPassword || !confirmPassword) { showCustomAlert('กรุณากรอกรหัสผ่านให้ครบทั้ง 3 ช่อง', 'ข้อมูลไม่ครบ'); return; }
+                if (newPassword !== confirmPassword) { showCustomAlert('รหัสผ่านใหม่และรหัสยืนยันไม่ตรงกัน', 'ข้อมูลไม่ตรงกัน'); return; }
+                if (newPassword.length < 8) { showCustomAlert('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร', 'รหัสผ่านสั้นเกินไป'); return; }
+            }
+
             try {
-                await apiFetch('/api/auth/password', { method: 'PUT', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }) });
-                showCustomAlert('เปลี่ยนรหัสผ่านสำเร็จแล้ว!', 'บันทึกสำเร็จ');
+                if (usernameChanged) {
+                    const saveData = await apiFetch('/api/profile', { method: 'PUT', body: JSON.stringify({ username: newUsername }) });
+                    currentUser.username = saveData.username;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    document.getElementById('sidebar-username').innerText = saveData.username;
+                }
+                if (wantsPasswordChange) {
+                    await apiFetch('/api/auth/password', { method: 'PUT', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }) });
+                }
+                showCustomAlert(
+                    usernameChanged && wantsPasswordChange ? 'บันทึกชื่อผู้ใช้งานและเปลี่ยนรหัสผ่านสำเร็จแล้ว!'
+                        : usernameChanged ? 'บันทึกชื่อผู้ใช้งานสำเร็จแล้ว!' : 'เปลี่ยนรหัสผ่านสำเร็จแล้ว!',
+                    'บันทึกสำเร็จ'
+                );
                 event.target.reset();
+                loadProfileInfo(); // form.reset() ล้างช่องชื่อผู้ใช้/อีเมลไปด้วย ต้องโหลดค่าล่าสุดจาก localStorage กลับเข้าไปใหม่
                 showView('dashboard-view', 'nav-home');
             } catch (err) {
-                showCustomAlert(err.message, 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+                showCustomAlert(err.message, 'บันทึกข้อมูลไม่สำเร็จ');
             }
         }
 
@@ -2629,6 +2656,22 @@
 
         function showDailyRewardModal() { document.getElementById('daily-reward-modal').classList.remove('hidden'); }
         function closeDailyRewardModal() { document.getElementById('daily-reward-modal').classList.add('hidden'); }
+
+        // เช็คกับ backend ว่ากิจกรรม "รางวัลรายวัน" (activity_id 1) วันนี้กดรับไปแล้วหรือยัง ถ้ารับไปแล้ว
+        // ให้ซ่อนแบนเนอร์ไปเลย กันปัญหาเดิมที่แบนเนอร์ค้างโชว์ให้กดซ้ำได้ทั้งที่รับไปแล้ว (กดแล้วก็เจอแต่ error
+        // "เคยรับไปแล้ว" ไม่ได้เหรียญเพิ่ม) เรียกทุกครั้งที่เข้าแอป/เข้าหน้าแรก เพราะวันอาจเปลี่ยนระหว่างที่ token ยังไม่หมดอายุ
+        async function refreshDailyRewardBanner() {
+            const banner = document.getElementById('daily-login-banner');
+            if (!banner) return;
+            try {
+                const activities = await apiFetch('/api/activities');
+                const daily = activities.find(a => a.activity_id === 1);
+                banner.classList.toggle('hidden', !!(daily && daily.claimed_today));
+            } catch (err) {
+                // โหลดสถานะไม่สำเร็จ (เช่นเน็ตหลุด) ปล่อยแบนเนอร์ไว้ตามเดิม ไม่ต้องรบกวนผู้ใช้ด้วย alert เพิ่ม
+            }
+        }
+
         async function claimDailyReward() {
             try {
                 const result = await apiFetch('/api/activities/1/claim', { method: 'POST' });
@@ -2638,6 +2681,8 @@
                 showCustomAlert(`รับ ${result.reward_coin} เหรียญเข้ากระเป๋าเรียบร้อย!`, 'รับรางวัลแล้ว');
             } catch (err) {
                 closeDailyRewardModal();
+                // ไม่ว่าจะกดไม่สำเร็จเพราะสาเหตุอะไร (ส่วนใหญ่คือเคยรับไปแล้ว) ก็ไม่ควรปล่อยให้แบนเนอร์ค้างกดซ้ำได้อีก
+                document.getElementById('daily-login-banner').classList.add('hidden');
                 showCustomAlert(err.message, 'รับรางวัลไม่สำเร็จ');
             }
         }
