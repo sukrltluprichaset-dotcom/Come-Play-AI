@@ -97,6 +97,8 @@ func main() {
 
 	evaluationHandler := handlers.NewEvaluationHandler(db)
 	app.Post("/api/evaluations", authMW, evaluationHandler.Submit)
+	app.Get("/api/characters/:id/evaluation-prompt", authMW, evaluationHandler.PromptStatus)
+	app.Post("/api/characters/:id/evaluation-prompt/dismiss", authMW, evaluationHandler.DismissPrompt)
 
 	uploadHandler := handlers.NewUploadHandler(cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SupabaseBucket)
 	app.Post("/api/uploads", authMW, uploadHandler.Upload)
