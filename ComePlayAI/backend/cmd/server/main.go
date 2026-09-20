@@ -111,7 +111,7 @@ func main() {
 	app.Get("/api/coins", authMW, coinHandler.GetBalance)
 
 	activityHandler := handlers.NewActivityHandler(db)
-	app.Get("/api/activities", activityHandler.List)
+	app.Get("/api/activities", authMW, activityHandler.List)
 	app.Post("/api/activities/:id/claim", authMW, activityHandler.Claim)
 
 	diaryHandler := handlers.NewDiaryHandler(db, geminiClient)

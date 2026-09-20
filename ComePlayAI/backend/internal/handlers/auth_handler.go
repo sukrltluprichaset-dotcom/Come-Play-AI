@@ -274,10 +274,13 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 
 type updateProfileRequest struct {
 	AvatarURL string `json:"avatar_url"`
+	Username  string `json:"username"`
 }
 
-// UpdateProfile บันทึก URL รูปโปรไฟล์ใหม่ของผู้ใช้ (ไฟล์รูปเองอัปโหลดผ่าน /api/uploads ที่มีอยู่แล้ว
-// endpoint นี้แค่รับ URL ที่ได้กลับมาไปบันทึกลงบัญชีผู้ใช้)
+// UpdateProfile บันทึกรูปโปรไฟล์ และ/หรือ ชื่อผู้ใช้งานใหม่ (ส่งมาเฉพาะฟิลด์ที่ต้องการแก้ก็ได้ ไม่ต้องส่งครบทั้งคู่)
+// ไฟล์รูปเองอัปโหลดผ่าน /api/uploads ที่มีอยู่แล้ว endpoint นี้แค่รับ URL ที่ได้กลับมาไปบันทึกลงบัญชีผู้ใช้
+// ตั้งใจไม่ให้แก้ "อีเมล" ผ่าน endpoint นี้ (หรือที่ไหนเลย) เพราะอีเมลผูกกับการเข้าสู่ระบบ/ยืนยันตัวตนของบัญชี
+// ส่วนชื่อผู้ใช้งานแก้ได้อิสระเหมือนเป็นชื่อเล่น/ชื่อที่แสดงผล ไม่ได้ใช้ล็อกอิน (ล็อกอินด้วยอีเมลอยู่แล้ว)
 func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	userID := userIDFromContext(c)
 
@@ -287,19 +290,45 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	}
 
 	req.AvatarURL = strings.TrimSpace(req.AvatarURL)
-	if req.AvatarURL == "" {
-		return writeError(c, fiber.StatusBadRequest, "ไม่พบ URL รูปโปรไฟล์")
+	req.Username = strings.TrimSpace(req.Username)
+
+	if req.AvatarURL == "" && req.Username == "" {
+		return writeError(c, fiber.StatusBadRequest, "ไม่มีข้อมูลที่ต้องการแก้ไข")
+	}
+	if req.Username != "" && (len(req.Username) < 3 || len(req.Username) > 50) {
+		return writeError(c, fiber.StatusBadRequest, "ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร")
+	}
+
+	if req.Username != "" {
+		var exists bool
+		if err := h.DB.QueryRow(
+			`SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND user_id != $2)`,
+			req.Username, userID,
+		).Scan(&exists); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+		}
+		if exists {
+			return writeError(c, fiber.StatusConflict, "ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
+		}
 	}
 
 	var user models.User
 	var avatarURL sql.NullString
+	// ใช้ COALESCE(NULLIF($x, ''), column) เพื่อให้ส่งมาแค่ฟิลด์เดียว (avatar หรือ username) ก็แก้ได้
+	// โดยไม่กระทบอีกฟิลด์ที่ไม่ได้ส่งมา (ค่าว่างจะถูกมองว่า "ไม่ได้ส่งมา" แล้วคงค่าคอลัมน์เดิมไว้)
 	err := h.DB.QueryRow(
-		`UPDATE users SET avatar_url = $1 WHERE user_id = $2
+		`UPDATE users SET
+			avatar_url = COALESCE(NULLIF($1, ''), avatar_url),
+			username = COALESCE(NULLIF($2, ''), username)
+		 WHERE user_id = $3
 		 RETURNING user_id, username, email, role, created_at, avatar_url`,
-		req.AvatarURL, userID,
+		req.AvatarURL, req.Username, userID,
 	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &avatarURL)
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "บันทึกรูปโปรไฟล์ไม่สำเร็จ")
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return writeError(c, fiber.StatusConflict, "ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกข้อมูลโปรไฟล์ไม่สำเร็จ")
 	}
 	if avatarURL.Valid {
 		user.AvatarURL = &avatarURL.String

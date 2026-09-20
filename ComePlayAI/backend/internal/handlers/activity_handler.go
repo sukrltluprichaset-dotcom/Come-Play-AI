@@ -18,6 +18,8 @@ func NewActivityHandler(db *sql.DB) *ActivityHandler {
 }
 
 func (h *ActivityHandler) List(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
 	rows, err := h.DB.Query(
 		`SELECT activity_id, activity_name, description, reward_coin, is_repeatable
 		 FROM activities WHERE is_active = true ORDER BY activity_id ASC`,
@@ -38,6 +40,31 @@ func (h *ActivityHandler) List(c *fiber.Ctx) error {
 			a.Description = &description.String
 		}
 		activities = append(activities, a)
+	}
+
+	// เช็คสถานะ "รับไปแล้วหรือยัง" ของแต่ละกิจกรรมแยกทีหลัง (คนละ query กับด้านบน เพราะด้านบนต้องปิด
+	// rows ก่อนจะยิง query ใหม่ซ้อนบน connection เดียวกันได้) ใช้ตรรกะเดียวกับตอน Claim(): ถ้า repeatable
+	// เช็คว่าวันนี้รับไปหรือยัง ถ้าไม่ repeatable เช็คว่าเคยรับไปแล้วครั้งใดก็ตาม
+	for i := range activities {
+		var claimed bool
+		if activities[i].IsRepeatable {
+			err = h.DB.QueryRow(
+				`SELECT EXISTS(
+					SELECT 1 FROM user_activities
+					WHERE user_id = $1 AND activity_id = $2 AND completed_at::date = CURRENT_DATE
+				)`,
+				userID, activities[i].ActivityID,
+			).Scan(&claimed)
+		} else {
+			err = h.DB.QueryRow(
+				`SELECT EXISTS(SELECT 1 FROM user_activities WHERE user_id = $1 AND activity_id = $2)`,
+				userID, activities[i].ActivityID,
+			).Scan(&claimed)
+		}
+		if err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายการกิจกรรมไม่สำเร็จ")
+		}
+		activities[i].ClaimedToday = claimed
 	}
 
 	return writeJSON(c, fiber.StatusOK, activities)
