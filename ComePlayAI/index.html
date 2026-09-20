@@ -802,6 +802,18 @@
         </div>
     </div>
 
+    <div id="survey-prompt-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity overflow-y-auto py-10">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-8 max-w-sm w-full relative mx-4 animate-pop-up my-auto text-center">
+            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-3 shadow-inner"><i class="fa-solid fa-list-check"></i></div>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">ช่วยประเมิน <span id="survey-prompt-char-name" class="text-indigo-600">ตัวละคร</span> หน่อยไหม?</h2>
+            <p class="text-slate-500 text-sm mb-6">แบบสอบถามสั้นๆ 10 ข้อ เพื่อนำไปพัฒนา AI ให้ดียิ่งขึ้น (ถามครั้งเดียวสำหรับตัวละครนี้)</p>
+            <div class="flex flex-col space-y-2">
+                <button onclick="acceptSurveyPrompt()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-lg transition">ตอบแบบสอบถาม</button>
+                <button onclick="declineSurveyPrompt()" class="w-full text-sm font-bold text-slate-400 hover:text-indigo-500 transition py-2">ไม่ตอบตอนนี้</button>
+            </div>
+        </div>
+    </div>
+
     <div id="post-questionnaire-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity py-10">
         <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 border border-indigo-100 animate-pop-up flex flex-col max-h-[90vh]">
             <div class="shrink-0 text-center mb-4 border-b border-slate-100 pb-4">
@@ -1721,6 +1733,9 @@
         let chatActiveMediaUrl = '';
         let chatActiveMediaType = 'image';
         let hasChattedInCurrentSession = false;
+        // จำนวนข้อความขั้นต่ำ (นับทั้งฝั่งผู้ใช้และ AI รวมกัน) ที่ต้องคุยกับตัวละครนี้มาก่อน ถึงจะเริ่มถามว่า
+        // อยากตอบแบบสอบถามไหม กันไม่ให้เด้งถามทั้งที่เพิ่งทักไปแค่ประโยคเดียว ยังไม่มีอะไรให้ประเมินจริงจัง
+        const EVAL_PROMPT_MIN_MESSAGES = 6;
         let sendingCharacterIds = new Set(); // เก็บ characterId ที่กำลังรอ AI ตอบอยู่ (กันซ้อนเฉพาะ "ห้องเดียวกัน" ไม่ล็อกข้ามห้อง)
         let chatMsgCounter = 0;
         let pendingPaymentCoins = 0;
@@ -2598,8 +2613,35 @@
                 showView('dashboard-view', 'nav-home');
             }
         }
-        function submitEmotion(emotionText) { document.getElementById('post-emotion-modal').classList.add('hidden'); showQuestionnaire(); }
-        function skipEmotion() { document.getElementById('post-emotion-modal').classList.add('hidden'); showQuestionnaire(); }
+        function submitEmotion(emotionText) { document.getElementById('post-emotion-modal').classList.add('hidden'); maybeShowSurveyPrompt(); }
+        function skipEmotion() { document.getElementById('post-emotion-modal').classList.add('hidden'); maybeShowSurveyPrompt(); }
+        // ตัดสินใจว่าจะเด้งป๊อปอัปชวนตอบแบบสอบถามหรือไม่ (แทนที่จะบังคับโชว์แบบสอบถาม 10 ข้อทุกครั้งที่ออกจากห้องแชท
+        // เหมือนเดิม) เงื่อนไข: ต้องคุยมาแล้วอย่างน้อย EVAL_PROMPT_MIN_MESSAGES ข้อความ และยังไม่เคยถูกถาม/ตอบ
+        // เรื่องตัวละครนี้มาก่อน (เช็คสถานะจากฝั่งเซิร์ฟเวอร์ เพื่อให้จำได้ข้ามอุปกรณ์/ข้ามเซสชัน)
+        async function maybeShowSurveyPrompt() {
+            const msgCount = document.getElementById('chat-messages').children.length;
+            if (msgCount < EVAL_PROMPT_MIN_MESSAGES) { showView('dashboard-view', 'nav-home'); return; }
+            try {
+                const status = await apiFetch(`/api/characters/${currentChatCharacterId}/evaluation-prompt`);
+                if (status.already_asked) { showView('dashboard-view', 'nav-home'); return; }
+            } catch (err) {
+                // เช็คสถานะไม่สำเร็จ ปล่อยผ่านไปหน้าแดชบอร์ดเลยดีกว่าเด้งป๊อปอัปทั้งที่ไม่รู้สถานะจริง
+                showView('dashboard-view', 'nav-home');
+                return;
+            }
+            document.getElementById('survey-prompt-char-name').innerText = currentChatCharName;
+            document.getElementById('survey-prompt-modal').classList.remove('hidden');
+        }
+        function acceptSurveyPrompt() {
+            document.getElementById('survey-prompt-modal').classList.add('hidden');
+            showQuestionnaire();
+        }
+        function declineSurveyPrompt() {
+            document.getElementById('survey-prompt-modal').classList.add('hidden');
+            // ยิงแบบไม่รอผล (fire-and-forget) เพื่อบันทึกไว้ว่าถามไปแล้ว ไม่ให้เด้งถามซ้ำตัวละครนี้อีก
+            apiFetch(`/api/characters/${currentChatCharacterId}/evaluation-prompt/dismiss`, { method: 'POST' }).catch(() => {});
+            showView('dashboard-view', 'nav-home');
+        }
         function showQuestionnaire() {
             document.getElementById('survey-char-name').innerText = currentChatCharName;
             for (let i = 1; i <= 10; i++) rateStar(i, 0);
@@ -2643,7 +2685,7 @@
             try {
                 await apiFetch('/api/evaluations', {
                     method: 'POST',
-                    body: JSON.stringify({ answers }),
+                    body: JSON.stringify({ character_id: currentChatCharacterId, answers }),
                 });
                 document.getElementById('post-questionnaire-modal').classList.add('hidden');
                 showCustomAlert('ขอบคุณสำหรับข้อมูลเพื่อช่วยเราพัฒนา AI ให้ดียิ่งขึ้นครับ', 'ส่งแบบประเมินสำเร็จ!');
@@ -2652,7 +2694,13 @@
                 showCustomAlert(err.message, 'ส่งแบบประเมินไม่สำเร็จ');
             }
         }
-        function skipQuestionnaire() { document.getElementById('post-questionnaire-modal').classList.add('hidden'); showView('dashboard-view', 'nav-home'); }
+        function skipQuestionnaire() {
+            document.getElementById('post-questionnaire-modal').classList.add('hidden');
+            // เผื่อกรณีเปิดแบบสอบถามเต็มรูปแบบมาแล้วกดข้ามตอนนี้ (มาจากการกด "ตอบแบบสอบถาม" ในป๊อปอัปก่อนหน้า)
+            // ก็ยังต้องบันทึกว่าถามตัวละครนี้ไปแล้วเหมือนกัน ไม่งั้นครั้งหน้าจะเด้งป๊อปอัปถามซ้ำอีก
+            apiFetch(`/api/characters/${currentChatCharacterId}/evaluation-prompt/dismiss`, { method: 'POST' }).catch(() => {});
+            showView('dashboard-view', 'nav-home');
+        }
 
         function showDailyRewardModal() { document.getElementById('daily-reward-modal').classList.remove('hidden'); }
         function closeDailyRewardModal() { document.getElementById('daily-reward-modal').classList.add('hidden'); }
