@@ -9,6 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Prompt', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        /* แก้ปัญหาช่องพิมพ์แชท (chat-input) อยู่ต่ำเกินจอบนมือถือ: ปกติ h-screen ของ Tailwind ใช้ 100vh
+           ซึ่งบนมือถือคำนวณความสูงจาก "จอเต็มทั้งหมด" รวมพื้นที่ที่ address bar ของเบราว์เซอร์บังอยู่ด้วย
+           ไม่ใช่พื้นที่ที่มองเห็นจริง พอ address bar โผล่ขึ้นมา (ค่า default ตอนเปิดหน้าเว็บ) เนื้อหาที่สูง
+           เท่า 100vh เลยสูงเกินพื้นที่มองเห็นจริง แถบพิมพ์ข้อความที่ถูกดันไปอยู่ล่างสุดของ layout (h-full)
+           จึงตกไปอยู่ใต้ขอบจอที่มองไม่เห็น ทำให้ผู้ใช้รู้สึกว่าช่องพิมพ์อยู่ต่ำเกินไป
+           ใช้ 100dvh (dynamic viewport height) แทน จะได้ปรับความสูงตามพื้นที่มองเห็นจริงเสมอ
+           (เบราว์เซอร์เก่าที่ไม่รู้จัก dvh จะ fallback ไปใช้ 100vh ของ Tailwind ตามปกติ)
+           ใช้ selector "body.h-screen" (มี specificity สูงกว่า .h-screen เฉย ๆ ของ Tailwind CDN)
+           เพื่อให้ override ได้แน่นอนไม่ว่า Tailwind จะแทรกสไตล์ตัวเองก่อนหรือหลังบล็อกนี้ */
+        @supports (height: 100dvh) {
+            body.h-screen { height: 100dvh; }
+        }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(203, 213, 225, 0.5); border-radius: 10px; }
@@ -200,7 +212,18 @@
         </main>
     </div>
 
-    <div id="auth-layout" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 relative z-50 hidden">
+    <!-- เดิม div นี้ไม่มี overflow-y-auto เลย พอฟอร์มสมัครสมาชิก (register-view) ซึ่งมีหลายช่อง
+         (ชื่อผู้ใช้, อีเมล, รหัสผ่าน, โค้ดชวนเพื่อน, รหัสยืนยันความปลอดภัย, ปุ่มสมัคร) สูงเกินจอมือถือ
+         บวกกับ items-center ที่จัดกึ่งกลางแนวตั้ง ส่วนบนสุดของการ์ด (ปุ่ม "กลับไปเรียกดูตัวละคร"
+         และหัวข้อ) เลยถูกดันโผล่พ้นขอบจอด้านบนไป และเนื่องจาก body ตั้ง overflow-hidden ไว้อยู่แล้ว
+         จึงไม่มีทางเลื่อนขึ้นไปดู/กดปุ่มย้อนกลับได้เลย (นี่คือสาเหตุที่ผู้ใช้รายงานว่า "ไม่มีปุ่มย้อนกลับ"
+         ทั้งที่จริงมีอยู่ในโค้ด)
+         แก้โดยเปลี่ยน items-center เป็น items-start (จัดการ์ดชิดบนแทนกึ่งกลางแนวตั้ง) แล้วเพิ่ม
+         overflow-y-auto + py-8 เพื่อให้เลื่อนดูได้เสมอ — ไม่ใช้ items-center ร่วมกับ overflow-y-auto
+         เพราะเบราว์เซอร์ส่วนใหญ่ (Chrome/Safari) มี bug ที่ทำให้เลื่อนขึ้นไปถึงส่วนบนสุดของเนื้อหาที่
+         เกินจอ (ฝั่งที่อยู่ "ก่อน" จุดกึ่งกลาง) ไม่ได้จริง ๆ (scrollTop ติดลบไม่ได้) ส่วน items-start จะ
+         ไม่มีปัญหานี้และยังเลื่อนลงไปดูส่วนล่างที่เกินได้ตามปกติเหมือน modal อื่น ๆ ในไฟล์นี้ -->
+    <div id="auth-layout" class="h-full w-full flex items-start justify-center overflow-y-auto py-8 bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 relative z-50 hidden">
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
             <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
             <div class="absolute top-1/2 -right-24 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style="animation-delay: 2s;"></div>
