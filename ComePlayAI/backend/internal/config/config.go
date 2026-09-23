@@ -20,6 +20,9 @@ type Config struct {
 	SupabaseURL        string
 	SupabaseServiceKey string
 	SupabaseBucket     string
+	ResendAPIKey       string
+	ResendFromEmail    string
+	FrontendURL        string
 }
 
 func Load() (*Config, error) {
@@ -38,6 +41,9 @@ func Load() (*Config, error) {
 		SupabaseURL:        getEnv("SUPABASE_URL", "https://dgdashzusbhnpluwimji.supabase.co"),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 		SupabaseBucket:     getEnv("SUPABASE_BUCKET", "avatars"),
+		ResendAPIKey:       getEnv("RESEND_API_KEY", ""),
+		ResendFromEmail:    getEnv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
+		FrontendURL:        getEnv("FRONTEND_URL", "https://ay-ai-2.onrender.com"),
 	}
 
 	if cfg.DBPassword == "" {

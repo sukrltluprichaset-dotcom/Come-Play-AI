@@ -3,14 +3,17 @@ package handlers
 import (
 	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
 
 	"comeplayai-backend/internal/auth"
+	"comeplayai-backend/internal/email"
 	"comeplayai-backend/internal/models"
 )
 
@@ -55,12 +58,14 @@ func (h *AuthHandler) generateUniqueReferralCode() (string, error) {
 }
 
 type AuthHandler struct {
-	DB        *sql.DB
-	JWTSecret string
+	DB          *sql.DB
+	JWTSecret   string
+	EmailClient *email.ResendClient
+	FrontendURL string
 }
 
-func NewAuthHandler(db *sql.DB, jwtSecret string) *AuthHandler {
-	return &AuthHandler{DB: db, JWTSecret: jwtSecret}
+func NewAuthHandler(db *sql.DB, jwtSecret string, emailClient *email.ResendClient, frontendURL string) *AuthHandler {
+	return &AuthHandler{DB: db, JWTSecret: jwtSecret, EmailClient: emailClient, FrontendURL: frontendURL}
 }
 
 type authResponse struct {
@@ -274,10 +279,13 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 
 type updateProfileRequest struct {
 	AvatarURL string `json:"avatar_url"`
+	Username  string `json:"username"`
 }
 
-// UpdateProfile บันทึก URL รูปโปรไฟล์ใหม่ของผู้ใช้ (ไฟล์รูปเองอัปโหลดผ่าน /api/uploads ที่มีอยู่แล้ว
-// endpoint นี้แค่รับ URL ที่ได้กลับมาไปบันทึกลงบัญชีผู้ใช้)
+// UpdateProfile บันทึกรูปโปรไฟล์ และ/หรือ ชื่อผู้ใช้งานใหม่ (ส่งมาเฉพาะฟิลด์ที่ต้องการแก้ก็ได้ ไม่ต้องส่งครบทั้งคู่)
+// ไฟล์รูปเองอัปโหลดผ่าน /api/uploads ที่มีอยู่แล้ว endpoint นี้แค่รับ URL ที่ได้กลับมาไปบันทึกลงบัญชีผู้ใช้
+// ตั้งใจไม่ให้แก้ "อีเมล" ผ่าน endpoint นี้ (หรือที่ไหนเลย) เพราะอีเมลผูกกับการเข้าสู่ระบบ/ยืนยันตัวตนของบัญชี
+// ส่วนชื่อผู้ใช้งานแก้ได้อิสระเหมือนเป็นชื่อเล่น/ชื่อที่แสดงผล ไม่ได้ใช้ล็อกอิน (ล็อกอินด้วยอีเมลอยู่แล้ว)
 func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	userID := userIDFromContext(c)
 
@@ -287,19 +295,45 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	}
 
 	req.AvatarURL = strings.TrimSpace(req.AvatarURL)
-	if req.AvatarURL == "" {
-		return writeError(c, fiber.StatusBadRequest, "ไม่พบ URL รูปโปรไฟล์")
+	req.Username = strings.TrimSpace(req.Username)
+
+	if req.AvatarURL == "" && req.Username == "" {
+		return writeError(c, fiber.StatusBadRequest, "ไม่มีข้อมูลที่ต้องการแก้ไข")
+	}
+	if req.Username != "" && (len(req.Username) < 3 || len(req.Username) > 50) {
+		return writeError(c, fiber.StatusBadRequest, "ชื่อผู้ใช้ต้องมีความยาว 3-50 ตัวอักษร")
+	}
+
+	if req.Username != "" {
+		var exists bool
+		if err := h.DB.QueryRow(
+			`SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND user_id != $2)`,
+			req.Username, userID,
+		).Scan(&exists); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+		}
+		if exists {
+			return writeError(c, fiber.StatusConflict, "ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
+		}
 	}
 
 	var user models.User
 	var avatarURL sql.NullString
+	// ใช้ COALESCE(NULLIF($x, ''), column) เพื่อให้ส่งมาแค่ฟิลด์เดียว (avatar หรือ username) ก็แก้ได้
+	// โดยไม่กระทบอีกฟิลด์ที่ไม่ได้ส่งมา (ค่าว่างจะถูกมองว่า "ไม่ได้ส่งมา" แล้วคงค่าคอลัมน์เดิมไว้)
 	err := h.DB.QueryRow(
-		`UPDATE users SET avatar_url = $1 WHERE user_id = $2
+		`UPDATE users SET
+			avatar_url = COALESCE(NULLIF($1, ''), avatar_url),
+			username = COALESCE(NULLIF($2, ''), username)
+		 WHERE user_id = $3
 		 RETURNING user_id, username, email, role, created_at, avatar_url`,
-		req.AvatarURL, userID,
+		req.AvatarURL, req.Username, userID,
 	).Scan(&user.UserID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &avatarURL)
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "บันทึกรูปโปรไฟล์ไม่สำเร็จ")
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return writeError(c, fiber.StatusConflict, "ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกข้อมูลโปรไฟล์ไม่สำเร็จ")
 	}
 	if avatarURL.Valid {
 		user.AvatarURL = &avatarURL.String
@@ -355,4 +389,116 @@ func (h *AuthHandler) GetReferralInfo(c *fiber.Ctx) error {
 	info.TotalInvited = len(info.Referrals)
 
 	return writeJSON(c, fiber.StatusOK, info)
+}
+
+// ----- ลืมรหัสผ่าน / รีเซ็ตรหัสผ่าน -----
+
+const resetTokenValidDuration = 1 * time.Hour
+
+// generateResetToken สุ่ม token แบบสุ่มปลอดภัย (crypto/rand) ยาว 32 ไบต์ แล้วเข้ารหัสเป็น hex string (64 ตัวอักษร)
+func generateResetToken() (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(tokenBytes), nil
+}
+
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+// ForgotPassword สร้าง reset token แล้วส่งลิงก์รีเซ็ตรหัสผ่านไปทางอีเมล (ผ่าน Resend)
+// ไม่ว่าอีเมลที่ส่งมาจะมีอยู่ในระบบหรือไม่ จะตอบข้อความสำเร็จแบบเดียวกันเสมอ (กันการเดาสุ่มว่าอีเมลไหนมีในระบบ - account enumeration)
+func (h *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	const genericMessage = "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปให้แล้ว กรุณาตรวจสอบกล่องจดหมาย (Inbox) ของคุณ"
+
+	var req forgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Email == "" || !strings.Contains(req.Email, "@") {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบอีเมลไม่ถูกต้อง")
+	}
+
+	var userID int64
+	err := h.DB.QueryRow(`SELECT user_id FROM users WHERE email = $1`, req.Email).Scan(&userID)
+	if err == sql.ErrNoRows {
+		// ไม่พบผู้ใช้ที่ใช้อีเมลนี้ - ตอบข้อความสำเร็จเหมือนเดิมโดยไม่ทำอะไรต่อ (กัน account enumeration)
+		return writeJSON(c, fiber.StatusOK, fiber.Map{"message": genericMessage})
+	} else if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	expiresAt := time.Now().Add(resetTokenValidDuration)
+
+	if _, err := h.DB.Exec(
+		`UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE user_id = $3`,
+		token, expiresAt, userID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	resetLink := fmt.Sprintf("%s/?reset_token=%s", strings.TrimRight(h.FrontendURL, "/"), token)
+
+	if h.EmailClient != nil {
+		if err := h.EmailClient.SendPasswordResetEmail(req.Email, resetLink); err != nil {
+			// ส่งอีเมลไม่สำเร็จ (เช่น Resend API ล่ม) ให้ log ไว้ แต่ไม่บอกรายละเอียดกับผู้ใช้
+			// (ยังคงตอบข้อความสำเร็จแบบเดิม เพื่อไม่ให้รู้ว่าอีเมลนี้มีอยู่จริงในระบบหรือไม่)
+			fmt.Printf("[ForgotPassword] ส่งอีเมลรีเซ็ตรหัสผ่านไม่สำเร็จ: %v\n", err)
+		}
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": genericMessage})
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+// ResetPassword เช็ค reset token (ต้องไม่หมดอายุ) แล้วเปลี่ยนรหัสผ่านใหม่ พร้อมล้าง token ทิ้งหลังใช้งานสำเร็จ
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	var req resetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+	req.Token = strings.TrimSpace(req.Token)
+
+	if req.Token == "" {
+		return writeError(c, fiber.StatusBadRequest, "ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้อง")
+	}
+	if len(req.NewPassword) < 8 {
+		return writeError(c, fiber.StatusBadRequest, "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร")
+	}
+
+	var userID int64
+	err := h.DB.QueryRow(
+		`SELECT user_id FROM users WHERE reset_token = $1 AND reset_token_expires > now()`,
+		req.Token,
+	).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return writeError(c, fiber.StatusBadRequest, "ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอลิงก์ใหม่")
+	} else if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	newHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	if _, err := h.DB.Exec(
+		`UPDATE users SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE user_id = $2`,
+		newHash, userID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เปลี่ยนรหัสผ่านไม่สำเร็จ")
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่"})
 }
