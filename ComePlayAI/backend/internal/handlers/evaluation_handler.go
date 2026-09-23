@@ -43,6 +43,14 @@ func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
 	if req.CharacterID <= 0 {
 		return writeError(c, fiber.StatusBadRequest, "ไม่พบตัวละครที่จะประเมิน")
 	}
+	var characterExists bool
+	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, req.CharacterID).Scan(&characterExists); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	if !characterExists {
+		return writeError(c, fiber.StatusBadRequest, "ไม่พบตัวละครนี้ในระบบ")
+	}
+
 	if len(req.Answers) == 0 {
 		return writeError(c, fiber.StatusBadRequest, "กรุณาตอบแบบประเมินให้ครบถ้วน")
 	}
