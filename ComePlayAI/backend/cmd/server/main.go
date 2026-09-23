@@ -7,6 +7,7 @@ import (
 
 	"comeplayai-backend/internal/config"
 	"comeplayai-backend/internal/database"
+	"comeplayai-backend/internal/email"
 	"comeplayai-backend/internal/handlers"
 	"comeplayai-backend/internal/llm"
 	"comeplayai-backend/internal/middleware"
@@ -49,12 +50,15 @@ func main() {
 
 	authMW := middleware.RequireAuth(cfg.JWTSecret)
 
-	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret)
+	resendClient := email.NewResendClient(cfg.ResendAPIKey, cfg.ResendFromEmail)
+	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret, resendClient, cfg.FrontendURL)
 	app.Post("/api/auth/register", authHandler.Register)
 	app.Post("/api/auth/login", authHandler.Login)
 	app.Put("/api/auth/password", authMW, authHandler.ChangePassword)
 	app.Put("/api/profile", authMW, authHandler.UpdateProfile)
 	app.Get("/api/referrals", authMW, authHandler.GetReferralInfo)
+	app.Post("/api/auth/forgot-password", authHandler.ForgotPassword)
+	app.Post("/api/auth/reset-password", authHandler.ResetPassword)
 
 	characterHandler := handlers.NewCharacterHandler(db)
 	app.Post("/api/characters", authMW, characterHandler.Create)

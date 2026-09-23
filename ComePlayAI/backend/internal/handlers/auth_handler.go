@@ -3,14 +3,17 @@ package handlers
 import (
 	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
 
 	"comeplayai-backend/internal/auth"
+	"comeplayai-backend/internal/email"
 	"comeplayai-backend/internal/models"
 )
 
@@ -55,12 +58,14 @@ func (h *AuthHandler) generateUniqueReferralCode() (string, error) {
 }
 
 type AuthHandler struct {
-	DB        *sql.DB
-	JWTSecret string
+	DB          *sql.DB
+	JWTSecret   string
+	EmailClient *email.ResendClient
+	FrontendURL string
 }
 
-func NewAuthHandler(db *sql.DB, jwtSecret string) *AuthHandler {
-	return &AuthHandler{DB: db, JWTSecret: jwtSecret}
+func NewAuthHandler(db *sql.DB, jwtSecret string, emailClient *email.ResendClient, frontendURL string) *AuthHandler {
+	return &AuthHandler{DB: db, JWTSecret: jwtSecret, EmailClient: emailClient, FrontendURL: frontendURL}
 }
 
 type authResponse struct {
@@ -384,4 +389,116 @@ func (h *AuthHandler) GetReferralInfo(c *fiber.Ctx) error {
 	info.TotalInvited = len(info.Referrals)
 
 	return writeJSON(c, fiber.StatusOK, info)
+}
+
+// ----- ลืมรหัสผ่าน / รีเซ็ตรหัสผ่าน -----
+
+const resetTokenValidDuration = 1 * time.Hour
+
+// generateResetToken สุ่ม token แบบสุ่มปลอดภัย (crypto/rand) ยาว 32 ไบต์ แล้วเข้ารหัสเป็น hex string (64 ตัวอักษร)
+func generateResetToken() (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(tokenBytes), nil
+}
+
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+// ForgotPassword สร้าง reset token แล้วส่งลิงก์รีเซ็ตรหัสผ่านไปทางอีเมล (ผ่าน Resend)
+// ไม่ว่าอีเมลที่ส่งมาจะมีอยู่ในระบบหรือไม่ จะตอบข้อความสำเร็จแบบเดียวกันเสมอ (กันการเดาสุ่มว่าอีเมลไหนมีในระบบ - account enumeration)
+func (h *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	const genericMessage = "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปให้แล้ว กรุณาตรวจสอบกล่องจดหมาย (Inbox) ของคุณ"
+
+	var req forgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Email == "" || !strings.Contains(req.Email, "@") {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบอีเมลไม่ถูกต้อง")
+	}
+
+	var userID int64
+	err := h.DB.QueryRow(`SELECT user_id FROM users WHERE email = $1`, req.Email).Scan(&userID)
+	if err == sql.ErrNoRows {
+		// ไม่พบผู้ใช้ที่ใช้อีเมลนี้ - ตอบข้อความสำเร็จเหมือนเดิมโดยไม่ทำอะไรต่อ (กัน account enumeration)
+		return writeJSON(c, fiber.StatusOK, fiber.Map{"message": genericMessage})
+	} else if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	expiresAt := time.Now().Add(resetTokenValidDuration)
+
+	if _, err := h.DB.Exec(
+		`UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE user_id = $3`,
+		token, expiresAt, userID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	resetLink := fmt.Sprintf("%s/?reset_token=%s", strings.TrimRight(h.FrontendURL, "/"), token)
+
+	if h.EmailClient != nil {
+		if err := h.EmailClient.SendPasswordResetEmail(req.Email, resetLink); err != nil {
+			// ส่งอีเมลไม่สำเร็จ (เช่น Resend API ล่ม) ให้ log ไว้ แต่ไม่บอกรายละเอียดกับผู้ใช้
+			// (ยังคงตอบข้อความสำเร็จแบบเดิม เพื่อไม่ให้รู้ว่าอีเมลนี้มีอยู่จริงในระบบหรือไม่)
+			fmt.Printf("[ForgotPassword] ส่งอีเมลรีเซ็ตรหัสผ่านไม่สำเร็จ: %v\n", err)
+		}
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": genericMessage})
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+// ResetPassword เช็ค reset token (ต้องไม่หมดอายุ) แล้วเปลี่ยนรหัสผ่านใหม่ พร้อมล้าง token ทิ้งหลังใช้งานสำเร็จ
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	var req resetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+	req.Token = strings.TrimSpace(req.Token)
+
+	if req.Token == "" {
+		return writeError(c, fiber.StatusBadRequest, "ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้อง")
+	}
+	if len(req.NewPassword) < 8 {
+		return writeError(c, fiber.StatusBadRequest, "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร")
+	}
+
+	var userID int64
+	err := h.DB.QueryRow(
+		`SELECT user_id FROM users WHERE reset_token = $1 AND reset_token_expires > now()`,
+		req.Token,
+	).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return writeError(c, fiber.StatusBadRequest, "ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอลิงก์ใหม่")
+	} else if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	newHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	if _, err := h.DB.Exec(
+		`UPDATE users SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE user_id = $2`,
+		newHash, userID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เปลี่ยนรหัสผ่านไม่สำเร็จ")
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่"})
 }
