@@ -23,7 +23,12 @@ type evaluationAnswer struct {
 }
 
 type submitEvaluationRequest struct {
-	Answers []evaluationAnswer `json:"answers"`
+	// เดิมไม่มีฟิลด์นี้เลย ทั้งที่หน้าเว็บ (submitQuestionnaire ใน index.html) ส่ง character_id
+	// มาด้วยทุกครั้งตอนกด "ส่งแบบประเมิน" — Go แค่เพิกเฉยฟิลด์ที่ struct ไม่รู้จักตอน BodyParser
+	// เลยไม่ error ให้เห็น แต่คำตอบที่บันทึกไว้ในตาราง evaluations เลยไม่รู้เลยว่าเป็นของตัวละครไหน
+	// รู้แค่ว่า user คนไหนตอบเท่านั้น แก้โดยรับค่านี้เข้ามาจริง ๆ แล้วบันทึกลง DB ด้วย
+	CharacterID int64              `json:"character_id"`
+	Answers     []evaluationAnswer `json:"answers"`
 }
 
 // Submit บันทึกคำตอบแบบประเมินหลายข้อพร้อมกันในครั้งเดียว
@@ -33,6 +38,17 @@ func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
 	var req submitEvaluationRequest
 	if err := c.BodyParser(&req); err != nil {
 		return writeError(c, fiber.StatusBadRequest, "รูปแบบข้อมูลไม่ถูกต้อง")
+	}
+
+	if req.CharacterID <= 0 {
+		return writeError(c, fiber.StatusBadRequest, "ไม่พบตัวละครที่จะประเมิน")
+	}
+	var characterExists bool
+	if err := h.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1)`, req.CharacterID).Scan(&characterExists); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	if !characterExists {
+		return writeError(c, fiber.StatusBadRequest, "ไม่พบตัวละครนี้ในระบบ")
 	}
 
 	if len(req.Answers) == 0 {
@@ -57,11 +73,11 @@ func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
 	for _, a := range req.Answers {
 		var ev models.Evaluation
 		err = tx.QueryRow(
-			`INSERT INTO evaluations (question, answer, user_id)
-			 VALUES ($1, $2, $3)
-			 RETURNING eval_id, question, answer, user_id, created_at`,
-			strings.TrimSpace(a.Question), a.Answer, userID,
-		).Scan(&ev.EvalID, &ev.Question, &ev.Answer, &ev.UserID, &ev.CreatedAt)
+			`INSERT INTO evaluations (question, answer, user_id, character_id)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING eval_id, question, answer, user_id, character_id, created_at`,
+			strings.TrimSpace(a.Question), a.Answer, userID, req.CharacterID,
+		).Scan(&ev.EvalID, &ev.Question, &ev.Answer, &ev.UserID, &ev.CharacterID, &ev.CreatedAt)
 		if err != nil {
 			return writeError(c, fiber.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
 		}
