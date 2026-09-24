@@ -752,6 +752,7 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-1">
+                            <button onclick="openQuizModal()" class="text-slate-400 hover:text-indigo-600 transition p-2 rounded-full hover:bg-indigo-50" title="มินิเกมตอบคำถามเกี่ยวกับตัวละครนี้"><i class="fa-solid fa-gamepad"></i></button>
                             <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
                             <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
                         </div>
@@ -963,6 +964,37 @@
                     <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition">ส่งรายงาน</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- มินิเกมตอบคำถามเกี่ยวกับตัวละคร: จำกัดเล่นได้วันละ 2 รอบต่อบัญชี (รวมทุกตัวละคร)
+         คำถามสุ่มใหม่จาก Gemini ทุกครั้งที่กดเริ่ม ตอบถูกยิ่งเยอะยิ่งได้เหรียญเยอะ -->
+    <div id="quiz-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-indigo-600 p-5 text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold">มินิเกมตอบคำถามเกี่ยวกับตัวละคร</h3>
+                <button onclick="closeQuizModal()"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div id="quiz-intro-view" class="text-center">
+                    <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-gamepad"></i></div>
+                    <p class="text-slate-600 text-sm mb-1">ตอบคำถามปรนัย 5 ข้อเกี่ยวกับ <span id="quiz-intro-char-name" class="font-bold text-slate-800"></span></p>
+                    <p class="text-slate-400 text-xs mb-6">ตอบถูกยิ่งเยอะ ยิ่งได้เหรียญเยอะ (คำถามสุ่มใหม่ทุกรอบ)</p>
+                    <p id="quiz-attempts-left-text" class="text-xs font-bold text-indigo-500 mb-4"></p>
+                    <button id="quiz-start-btn" onclick="startQuiz()" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl transition">เริ่มเล่น</button>
+                </div>
+                <div id="quiz-loading-view" class="text-center hidden py-8">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl text-indigo-500 mb-3"></i>
+                    <p class="text-slate-500 text-sm">กำลังแต่งคำถามให้... รอสักครู่นะครับ</p>
+                </div>
+                <form id="quiz-questions-form" onsubmit="submitQuiz(event)" class="hidden space-y-5"></form>
+                <div id="quiz-result-view" class="text-center hidden">
+                    <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner"><i class="fa-solid fa-trophy"></i></div>
+                    <p class="text-2xl font-black text-slate-800 mb-1"><span id="quiz-result-score">0</span>/5 ข้อ</p>
+                    <p class="text-indigo-600 font-bold mb-6">ได้รับ <span id="quiz-result-coin">0</span> เหรียญ!</p>
+                    <button onclick="closeQuizModal()" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl transition">ปิด</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2739,6 +2771,100 @@
             } catch (err) {
                 closeReportModal();
                 showCustomAlert(err.message, 'ส่งรายงานไม่สำเร็จ');
+            }
+        }
+
+        // ===== มินิเกมตอบคำถามเกี่ยวกับตัวละคร (จำกัดวันละ 2 รอบต่อบัญชี) =====
+        let quizCurrentAttemptId = null;
+        let quizCurrentQuestions = [];
+        let quizSelectedAnswers = [];
+
+        function openQuizModal() {
+            if (!currentChatCharacterId) return;
+            document.getElementById('quiz-intro-char-name').innerText = currentChatCharName;
+            resetQuizView();
+            checkQuizStatus();
+            document.getElementById('quiz-modal').classList.remove('hidden');
+        }
+        function closeQuizModal() { document.getElementById('quiz-modal').classList.add('hidden'); }
+        function resetQuizView() {
+            document.getElementById('quiz-intro-view').classList.remove('hidden');
+            document.getElementById('quiz-loading-view').classList.add('hidden');
+            document.getElementById('quiz-questions-form').classList.add('hidden');
+            document.getElementById('quiz-result-view').classList.add('hidden');
+            document.getElementById('quiz-start-btn').disabled = false;
+            document.getElementById('quiz-start-btn').classList.remove('opacity-50');
+        }
+
+        // เช็คว่าวันนี้เล่นไปแล้วกี่รอบ (โควตา 2 รอบ/วัน/บัญชี รวมทุกตัวละคร) เอาไว้โชว์ข้อความ + ปิดปุ่ม
+        // "เริ่มเล่น" ล่วงหน้าถ้าครบโควตาแล้ว กันไม่ให้ผู้ใช้กดแล้วเจอ error ตอนหลัง
+        async function checkQuizStatus() {
+            try {
+                const status = await apiFetch('/api/quiz/status');
+                const text = status.attempts_left_today > 0
+                    ? `วันนี้เล่นได้อีก ${status.attempts_left_today} รอบ`
+                    : 'วันนี้เล่นครบโควตาแล้ว พรุ่งนี้ค่อยมาใหม่นะครับ';
+                document.getElementById('quiz-attempts-left-text').innerText = text;
+                const startBtn = document.getElementById('quiz-start-btn');
+                startBtn.disabled = status.attempts_left_today <= 0;
+                startBtn.classList.toggle('opacity-50', status.attempts_left_today <= 0);
+            } catch (err) {
+                document.getElementById('quiz-attempts-left-text').innerText = '';
+            }
+        }
+
+        async function startQuiz() {
+            document.getElementById('quiz-intro-view').classList.add('hidden');
+            document.getElementById('quiz-loading-view').classList.remove('hidden');
+            try {
+                const result = await apiFetch(`/api/characters/${currentChatCharacterId}/quiz/start`, { method: 'POST' });
+                quizCurrentAttemptId = result.attempt_id;
+                quizCurrentQuestions = result.questions;
+                quizSelectedAnswers = new Array(quizCurrentQuestions.length).fill(null);
+                renderQuizQuestions();
+            } catch (err) {
+                closeQuizModal();
+                showCustomAlert(err.message, 'เริ่มมินิเกมไม่สำเร็จ');
+            }
+        }
+
+        function renderQuizQuestions() {
+            const form = document.getElementById('quiz-questions-form');
+            form.innerHTML = quizCurrentQuestions.map((q, qIndex) => `
+                <div>
+                    <p class="font-bold text-slate-800 text-sm mb-2">${qIndex + 1}. ${q.question}</p>
+                    <div class="space-y-2">
+                        ${q.choices.map((choice, cIndex) => `
+                            <label class="block cursor-pointer">
+                                <input type="radio" name="quiz-q-${qIndex}" value="${cIndex}" class="sr-only" onchange="quizSelectedAnswers[${qIndex}] = ${cIndex}">
+                                <div class="border-2 border-slate-200 rounded-xl p-3 text-sm hover:border-indigo-300 transition">${choice}</div>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('') + '<button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl mt-2">ส่งคำตอบ</button>';
+            document.getElementById('quiz-loading-view').classList.add('hidden');
+            form.classList.remove('hidden');
+        }
+
+        async function submitQuiz(event) {
+            event.preventDefault();
+            if (quizSelectedAnswers.some(a => a === null)) {
+                showCustomAlert('กรุณาเลือกคำตอบให้ครบทุกข้อก่อนส่งครับ', 'ตอบไม่ครบ');
+                return;
+            }
+            try {
+                const result = await apiFetch(`/api/quiz/${quizCurrentAttemptId}/submit`, {
+                    method: 'POST',
+                    body: JSON.stringify({ answers: quizSelectedAnswers }),
+                });
+                document.getElementById('quiz-questions-form').classList.add('hidden');
+                document.getElementById('quiz-result-score').innerText = result.score;
+                document.getElementById('quiz-result-coin').innerText = result.reward_coin;
+                document.getElementById('quiz-result-view').classList.remove('hidden');
+                document.getElementById('user-coin-balance').innerText = result.new_balance.toLocaleString();
+            } catch (err) {
+                showCustomAlert(err.message, 'ส่งคำตอบไม่สำเร็จ');
             }
         }
 
