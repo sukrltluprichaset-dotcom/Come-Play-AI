@@ -40,6 +40,13 @@
            เปลี่ยนเป็นสีขาว-ม่วงอ่อน (#eef2ff) ด้านบน — บังคับให้เป็นสีเข้มเสมอไม่ว่าจะธีมไหน */
         .payment-radio:checked + div i,
         .payment-radio:checked + div .flex-1 { color: #1e293b !important; }
+        /* ไฮไลต์ตัวเลือกที่กดในมินิเกมตอบคำถาม (เดิมกดได้จริงแต่ไม่มีอะไรโชว์ให้เห็นว่าเลือกแล้ว
+           เลยดูเหมือนกดไม่ติด) ใช้หลักการเดียวกับตอนเลือกช่องทางชำระเงินด้านบน */
+        .quiz-radio:checked + div {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+            color: #1e293b !important;
+        }
         .star-rating i { cursor: pointer; transition: color 0.2s, transform 0.1s; color: #cbd5e1; }
         .star-rating i:hover { transform: scale(1.1); }
         .star-rating i.active { color: #f59e0b; }
@@ -2836,7 +2843,7 @@
                     <div class="space-y-2">
                         ${q.choices.map((choice, cIndex) => `
                             <label class="block cursor-pointer">
-                                <input type="radio" name="quiz-q-${qIndex}" value="${cIndex}" class="sr-only" onchange="quizSelectedAnswers[${qIndex}] = ${cIndex}">
+                                <input type="radio" name="quiz-q-${qIndex}" value="${cIndex}" class="sr-only quiz-radio" onchange="quizSelectedAnswers[${qIndex}] = ${cIndex}">
                                 <div class="border-2 border-slate-200 rounded-xl p-3 text-sm hover:border-indigo-300 transition">${choice}</div>
                             </label>
                         `).join('')}
