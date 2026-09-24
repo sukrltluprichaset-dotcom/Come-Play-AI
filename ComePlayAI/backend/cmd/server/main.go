@@ -113,6 +113,11 @@ func main() {
 	app.Post("/api/characters/:id/chats", authMW, chatHandler.SendMessage)
 	app.Get("/api/characters/:id/chats", authMW, chatHandler.GetHistory)
 
+	quizHandler := handlers.NewQuizHandler(db, geminiClient)
+	app.Get("/api/quiz/status", authMW, quizHandler.Status)
+	app.Post("/api/characters/:id/quiz/start", authMW, quizHandler.Start)
+	app.Post("/api/quiz/:id/submit", authMW, quizHandler.Submit)
+
 	coinHandler := handlers.NewCoinHandler(db)
 	app.Get("/api/coins", authMW, coinHandler.GetBalance)
 
