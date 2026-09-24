@@ -36,6 +36,10 @@
         .typing-dot:nth-child(3) { animation-delay: 0.3s; }
         .payment-radio:checked + div { border-color: #4f46e5; background-color: #eef2ff; }
         .payment-radio:checked + div .check-icon { opacity: 1; transform: scale(1); }
+        /* กัน "ธีมมืด" ของแอปบังคับให้ตัวหนังสือ/ไอคอนเป็นสีอ่อน จนมองไม่เห็นตอนพื้นหลังช่องที่เลือก
+           เปลี่ยนเป็นสีขาว-ม่วงอ่อน (#eef2ff) ด้านบน — บังคับให้เป็นสีเข้มเสมอไม่ว่าจะธีมไหน */
+        .payment-radio:checked + div i,
+        .payment-radio:checked + div .flex-1 { color: #1e293b !important; }
         .star-rating i { cursor: pointer; transition: color 0.2s, transform 0.1s; color: #cbd5e1; }
         .star-rating i:hover { transform: scale(1.1); }
         .star-rating i.active { color: #f59e0b; }
