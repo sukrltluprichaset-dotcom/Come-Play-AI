@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -84,9 +85,64 @@ func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
 		saved = append(saved, ev)
 	}
 
+	// บันทึกว่า user คนนี้ตอบแบบประเมินของตัวละครนี้ไปแล้วจริง (answered = true)
+	// กัน popup ชวนตอบแบบประเมินเด้งถามซ้ำตัวละครเดิมอีกในครั้งต่อไป
+	if _, err := tx.Exec(
+		`INSERT INTO evaluation_prompts (user_id, character_id, answered)
+		 VALUES ($1, $2, true)
+		 ON CONFLICT (user_id, character_id) DO UPDATE SET answered = true`,
+		userID, req.CharacterID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
+	}
+
 	if err := tx.Commit(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "บันทึกแบบประเมินไม่สำเร็จ")
 	}
 
 	return writeJSON(c, fiber.StatusCreated, saved)
+}
+
+// PromptStatus บอกฝั่งหน้าเว็บว่าเคยถาม/ตอบแบบประเมินของตัวละครนี้ไปแล้วหรือยัง
+// (เรียกก่อนจะเด้ง popup ชวนตอบแบบประเมินตอนออกจากห้องแชท กันถามซ้ำตัวละครเดิม)
+func (h *EvaluationHandler) PromptStatus(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
+	}
+
+	var alreadyAsked bool
+	err = h.DB.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM evaluation_prompts WHERE user_id = $1 AND character_id = $2)`,
+		userID, characterID,
+	).Scan(&alreadyAsked)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"already_asked": alreadyAsked})
+}
+
+// DismissPrompt บันทึกว่า user กดข้าม/ปิด popup ชวนตอบแบบประเมินของตัวละครนี้ไปแล้ว
+// (answered = false เพราะแค่กดข้าม ไม่ได้ตอบจริง) กันไม่ให้เด้งถามซ้ำตัวละครเดิมอีก
+func (h *EvaluationHandler) DismissPrompt(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
+	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
+	}
+
+	if _, err := h.DB.Exec(
+		`INSERT INTO evaluation_prompts (user_id, character_id, answered)
+		 VALUES ($1, $2, false)
+		 ON CONFLICT (user_id, character_id) DO NOTHING`,
+		userID, characterID,
+	); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+
+	return writeJSON(c, fiber.StatusOK, fiber.Map{"ok": true})
 }
