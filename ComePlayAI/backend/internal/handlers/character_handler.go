@@ -209,6 +209,18 @@ func (h *CharacterHandler) Delete(c *fiber.Ctx) error {
 	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
 }
 
+//	คะแนนยอดนิยม = 0.5 x คะแนนดาว(0-1) + 0.5 x คะแนนยอดคุย(0-1)
+//	  - คะแนนดาว  = ดาวถัวเฉลี่ยแบบถ่วงด้วยจำนวนรีวิว ÷ 5 โดยผสม "ดาวกลาง 2.5" เข้าไปเทียบเท่ารีวิวสมมติ 3 รีวิว
+//	               ตัวละครที่ยังไม่มีรีวิวจึงได้ 2.5 (กลางๆ) ไม่ถูกหักเป็น 0.0 ดาวทั้งที่แค่ยังไม่มีคนรีวิว
+//	               ส่วนตัวละครที่มีรีวิวเยอะ ค่าจริงจะเด่นกว่าค่าสมมติ
+//	  - คะแนนยอดคุย = usage_count ÷ usage_count สูงสุดของตัวละครสาธารณะ (ตัวที่คุยมากสุดได้ 1.0)
+//
+// ถ้าคะแนนเท่ากัน ให้ตัวที่คุยมากกว่าขึ้นก่อน
+const popularityOrderClause = `(
+	0.5 * (((rating::float8 * review_count) + 2.5 * 3) / (review_count + 3)) / 5.0
+	+ 0.5 * (usage_count::float8 / GREATEST((SELECT MAX(usage_count) FROM characters WHERE is_shared = true), 1))
+) DESC, usage_count DESC, character_id ASC`
+
 // ----- List Public (ค้นหาตัวละครสาธารณะของทุกคน ไม่ต้องล็อกอิน) -----
 
 func (h *CharacterHandler) ListPublic(c *fiber.Ctx) error {
@@ -218,7 +230,7 @@ func (h *CharacterHandler) ListPublic(c *fiber.Ctx) error {
 	orderClause := "created_at DESC"
 	switch sortBy {
 	case "popular":
-		orderClause = "usage_count DESC"
+		orderClause = popularityOrderClause
 	case "rating":
 		orderClause = "rating DESC"
 	}
@@ -253,11 +265,11 @@ func (h *CharacterHandler) ListPublic(c *fiber.Ctx) error {
 	return writeJSON(c, fiber.StatusOK, characters)
 }
 
-// ----- Popular (ตัวละครยอดนิยม เรียงตามยอดใช้งาน) -----
+// ----- Popular (ตัวละครยอดนิยม เรียงตามคะแนนยอดนิยมที่ถัวเฉลี่ยทั้งดาวและยอดคุย) -----
 
 func (h *CharacterHandler) Popular(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
-		`SELECT ` + characterColumns + ` FROM characters WHERE is_shared = true ORDER BY usage_count DESC LIMIT 10`,
+		`SELECT ` + characterColumns + ` FROM characters WHERE is_shared = true ORDER BY ` + popularityOrderClause + ` LIMIT 10`,
 	)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "โหลดรายการตัวละครยอดนิยมไม่สำเร็จ")
