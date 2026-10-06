@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -187,19 +190,49 @@ func (h *AdminHandler) ListAllCharacters(c *fiber.Ctx) error {
 
 // ----- แอดมินลบตัวละครใดก็ได้ -----
 
+// ตารางที่มี character_id เป็น foreign key (ต้องลบก่อนลบตัวละคร)
+var characterDependentTables = []string{
+	"chats", "user_playlist_characters", "favorites", "character_reviews",
+	"reports", "evaluations", "evaluation_prompts", "diaries", "quiz_attempts",
+}
+
 func (h *AdminHandler) DeleteCharacter(c *fiber.Ctx) error {
 	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
-	result, err := h.DB.Exec(`DELETE FROM characters WHERE character_id = $1`, characterID)
+	// ลบข้อมูลที่ผูกกับตัวละครเองทีละตาราง แล้วค่อยลบตัวละคร ทั้งหมดอยู่ใน transaction เดียว
+	// ทำให้ลบได้แม้ฐานข้อมูลจริงไม่ได้ตั้ง ON DELETE CASCADE ไว้ (ข้ามตารางที่ไม่มีอยู่)
+	tx, err := h.DB.Begin()
 	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
+	}
+	defer tx.Rollback()
+
+	for _, table := range characterDependentTables {
+		var exists bool
+		if err := tx.QueryRow(`SELECT to_regclass($1) IS NOT NULL`, "public."+table).Scan(&exists); err != nil || !exists {
+			continue
+		}
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE character_id = $1`, characterID); err != nil {
+			log.Printf("admin delete character %d: ลบจากตาราง %s ไม่สำเร็จ: %v", characterID, table, err)
+			return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ (ข้อมูลที่เกี่ยวข้องลบไม่ครบ)")
+		}
+	}
+
+	result, err := tx.Exec(`DELETE FROM characters WHERE character_id = $1`, characterID)
+	if err != nil {
+		log.Printf("admin delete character %d: %v", characterID, err)
 		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
 		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
 
 	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
@@ -209,7 +242,8 @@ func (h *AdminHandler) DeleteCharacter(c *fiber.Ctx) error {
 
 func (h *AdminHandler) ListReports(c *fiber.Ctx) error {
 	rows, err := h.DB.Query(
-		`SELECT r.report_id, r.details, r.status, r.character_id, ch.name, r.user_id, u.username, r.created_at
+		`SELECT r.report_id, r.details, r.status, r.character_id, ch.name, r.user_id, u.username, r.created_at,
+		        COALESCE(r.admin_reply, ''), COALESCE(to_char(r.replied_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '')
 		 FROM reports r
 		 JOIN characters ch ON ch.character_id = r.character_id
 		 JOIN users u ON u.user_id = r.user_id
@@ -223,7 +257,7 @@ func (h *AdminHandler) ListReports(c *fiber.Ctx) error {
 	reports := []models.ReportAdminView{}
 	for rows.Next() {
 		var rp models.ReportAdminView
-		if err := rows.Scan(&rp.ReportID, &rp.Details, &rp.Status, &rp.CharacterID, &rp.CharacterName, &rp.UserID, &rp.Username, &rp.CreatedAt); err != nil {
+		if err := rows.Scan(&rp.ReportID, &rp.Details, &rp.Status, &rp.CharacterID, &rp.CharacterName, &rp.UserID, &rp.Username, &rp.CreatedAt, &rp.AdminReply, &rp.RepliedAt); err != nil {
 			return writeError(c, fiber.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
 		}
 		reports = append(reports, rp)
@@ -236,6 +270,7 @@ func (h *AdminHandler) ListReports(c *fiber.Ctx) error {
 
 type updateReportStatusRequest struct {
 	Status string `json:"status"` // "resolved" หรือ "rejected"
+	Reply  string `json:"reply"`  // ข้อความตอบกลับผู้รายงาน (ไม่บังคับ)
 }
 
 func (h *AdminHandler) UpdateReportStatus(c *fiber.Ctx) error {
@@ -252,7 +287,19 @@ func (h *AdminHandler) UpdateReportStatus(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusBadRequest, "สถานะต้องเป็น resolved หรือ rejected เท่านั้น")
 	}
 
-	result, err := h.DB.Exec(`UPDATE reports SET status = $1 WHERE report_id = $2`, req.Status, reportID)
+	req.Reply = strings.TrimSpace(req.Reply)
+	if utf8.RuneCountInString(req.Reply) > 1000 {
+		return writeError(c, fiber.StatusBadRequest, "ข้อความตอบกลับต้องไม่เกิน 1,000 ตัวอักษร")
+	}
+
+	// ถ้าแอดมินพิมพ์ข้อความตอบกลับ จะบันทึกพร้อมเวลา ถ้าไม่พิมพ์จะไม่แตะข้อความเดิม
+	result, err := h.DB.Exec(
+		`UPDATE reports
+		 SET status = $1,
+		     admin_reply = CASE WHEN $2 <> '' THEN $2 ELSE admin_reply END,
+		     replied_at  = CASE WHEN $2 <> '' THEN NOW() ELSE replied_at END
+		 WHERE report_id = $3`,
+		req.Status, req.Reply, reportID)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "อัปเดตสถานะไม่สำเร็จ")
 	}

@@ -98,6 +98,7 @@ func main() {
 
 	reportHandler := handlers.NewReportHandler(db)
 	app.Post("/api/characters/:id/reports", authMW, reportHandler.Create)
+	app.Get("/api/reports/mine", authMW, reportHandler.Mine)
 
 	evaluationHandler := handlers.NewEvaluationHandler(db)
 	app.Post("/api/evaluations", authMW, evaluationHandler.Submit)

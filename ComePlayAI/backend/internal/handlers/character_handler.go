@@ -196,7 +196,15 @@ func (h *CharacterHandler) Delete(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
-	result, err := h.DB.Exec(`DELETE FROM characters WHERE character_id = $1 AND user_id = $2`, id, userID)
+	// แอดมินลบตัวละครของใครก็ได้ ส่วนผู้ใช้ทั่วไปลบได้เฉพาะตัวละครของตัวเอง
+	role, _ := c.Locals(middleware.UserRoleKey).(string)
+
+	var result sql.Result
+	if role == "admin" {
+		result, err = h.DB.Exec(`DELETE FROM characters WHERE character_id = $1`, id)
+	} else {
+		result, err = h.DB.Exec(`DELETE FROM characters WHERE character_id = $1 AND user_id = $2`, id, userID)
+	}
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}

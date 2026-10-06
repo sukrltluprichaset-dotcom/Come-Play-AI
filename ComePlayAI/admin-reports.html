@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -25,6 +24,7 @@
                             <th class="px-4 py-3">ผู้รายงาน</th>
                             <th class="px-4 py-3">รายละเอียด</th>
                             <th class="px-4 py-3">สถานะ</th>
+                            <th class="px-4 py-3">ข้อความตอบกลับ</th>
                             <th class="px-4 py-3 text-center">จัดการ</th>
                         </tr>
                     </thead>
@@ -34,34 +34,58 @@
         </div>
     </div>
 
+    <!-- popup ตอบกลับผู้รายงาน + ปิดเคส -->
+    <div id="reply-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full mx-4">
+            <h3 class="font-bold text-lg text-slate-800 mb-1">ตอบกลับผู้รายงาน</h3>
+            <p id="reply-modal-info" class="text-sm text-slate-500 mb-3"></p>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-600 mb-3 max-h-32 overflow-y-auto whitespace-pre-wrap" id="reply-modal-details"></div>
+            <textarea id="reply-text" rows="4" maxlength="1000" placeholder="พิมพ์ข้อความตอบกลับถึงผู้ใช้ (ไม่บังคับ)..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 resize-none bg-slate-50 text-sm"></textarea>
+            <div class="flex gap-2 mt-4">
+                <button onclick="closeReplyModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg transition">ยกเลิก</button>
+                <button onclick="submitReply('rejected')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-lg transition">ไม่ดำเนินการ</button>
+                <button onclick="submitReply('resolved')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition">แก้ไขแล้ว</button>
+            </div>
+        </div>
+    </div>
+
     <script src="admin-shared.js"></script>
     <script>
         const user = requireAdminAuth();
+        let reportsCache = [];
+        let replyingReportId = null;
+
         if (user) {
             renderAdminNav('reports', user.username);
             loadReports();
         }
 
+        // กัน XSS: ข้อความจากผู้ใช้ต้องผ่านฟังก์ชันนี้ก่อนใส่ลง innerHTML
+        function esc(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
         async function loadReports() {
             try {
                 const reports = await apiFetch('/api/admin/reports');
+                reportsCache = reports;
                 const tbody = document.getElementById('reports-table-body');
                 if (reports.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">ไม่มีรายงานในระบบ</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">ไม่มีรายงานในระบบ</td></tr>';
                     return;
                 }
                 const statusBadge = { pending: 'bg-amber-100 text-amber-700', resolved: 'bg-emerald-100 text-emerald-700', rejected: 'bg-slate-100 text-slate-600' };
                 tbody.innerHTML = reports.map(r => `
                     <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3 font-bold text-slate-800">${r.character_name}</td>
-                        <td class="px-4 py-3 text-slate-600">${r.username}</td>
-                        <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${r.details}">${r.details}</td>
-                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${statusBadge[r.status] || 'bg-slate-100'}">${r.status}</span></td>
-                        <td class="px-4 py-3 text-center space-x-1">
-                            ${r.status === 'pending' ? `
-                                <button onclick="updateReport(${r.report_id}, 'resolved')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs px-2 py-1.5 rounded-lg transition">แก้ไขแล้ว</button>
-                                <button onclick="updateReport(${r.report_id}, 'rejected')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs px-2 py-1.5 rounded-lg transition">ไม่ดำเนินการ</button>
-                            ` : '<span class="text-slate-300 text-xs">-</span>'}
+                        <td class="px-4 py-3 font-bold text-slate-800">${esc(r.character_name)}</td>
+                        <td class="px-4 py-3 text-slate-600">${esc(r.username)}</td>
+                        <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${esc(r.details)}">${esc(r.details)}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${statusBadge[r.status] || 'bg-slate-100'}">${esc(r.status)}</span></td>
+                        <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${esc(r.admin_reply)}">${r.admin_reply ? esc(r.admin_reply) : '<span class="text-slate-300">-</span>'}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${r.status === 'pending'
+                                ? `<button onclick="openReplyModal(${Number(r.report_id)})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-reply mr-1"></i>ตอบกลับ / ปิดเคส</button>`
+                                : '<span class="text-slate-300 text-xs">-</span>'}
                         </td>
                     </tr>`).join('');
             } catch (err) {
@@ -69,9 +93,27 @@
             }
         }
 
-        async function updateReport(id, status) {
+        function openReplyModal(id) {
+            const r = reportsCache.find(x => x.report_id === id);
+            if (!r) return;
+            replyingReportId = id;
+            document.getElementById('reply-modal-info').innerText = `ตัวละคร: ${r.character_name}  |  ผู้รายงาน: ${r.username}`;
+            document.getElementById('reply-modal-details').innerText = r.details;
+            document.getElementById('reply-text').value = '';
+            document.getElementById('reply-modal').classList.remove('hidden');
+        }
+
+        function closeReplyModal() {
+            document.getElementById('reply-modal').classList.add('hidden');
+            replyingReportId = null;
+        }
+
+        async function submitReply(status) {
+            if (replyingReportId === null) return;
+            const reply = document.getElementById('reply-text').value.trim();
             try {
-                await apiFetch(`/api/admin/reports/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+                await apiFetch(`/api/admin/reports/${replyingReportId}`, { method: 'PUT', body: JSON.stringify({ status, reply }) });
+                closeReplyModal();
                 loadReports();
             } catch (err) {
                 adminAlert(err.message);

@@ -9,4 +9,18 @@ type ReportAdminView struct {
 	UserID        int64  `json:"user_id"`
 	Username      string `json:"username"`
 	CreatedAt     string `json:"created_at"`
+	AdminReply    string `json:"admin_reply"`
+	RepliedAt     string `json:"replied_at"`
+}
+
+// ReportUserView ใช้แสดงรายงานของผู้ใช้เองพร้อมข้อความตอบกลับจากแอดมิน
+type ReportUserView struct {
+	ReportID      int64  `json:"report_id"`
+	Details       string `json:"details"`
+	Status        string `json:"status"`
+	CharacterID   int64  `json:"character_id"`
+	CharacterName string `json:"character_name"`
+	CreatedAt     string `json:"created_at"`
+	AdminReply    string `json:"admin_reply"`
+	RepliedAt     string `json:"replied_at"`
 }

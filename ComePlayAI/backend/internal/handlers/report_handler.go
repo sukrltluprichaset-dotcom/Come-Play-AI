@@ -61,3 +61,35 @@ func (h *ReportHandler) Create(c *fiber.Ctx) error {
 
 	return writeJSON(c, fiber.StatusCreated, report)
 }
+
+// ----- รายงานของฉัน (ดูสถานะ + ข้อความตอบกลับจากแอดมิน) -----
+
+func (h *ReportHandler) Mine(c *fiber.Ctx) error {
+	userID := userIDFromContext(c)
+
+	rows, err := h.DB.Query(
+		`SELECT r.report_id, r.details, r.status, r.character_id, ch.name, r.created_at,
+		        COALESCE(r.admin_reply, ''), COALESCE(to_char(r.replied_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '')
+		 FROM reports r
+		 JOIN characters ch ON ch.character_id = r.character_id
+		 WHERE r.user_id = $1
+		 ORDER BY r.created_at DESC
+		 LIMIT 50`,
+		userID,
+	)
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
+	}
+	defer rows.Close()
+
+	reports := []models.ReportUserView{}
+	for rows.Next() {
+		var rp models.ReportUserView
+		if err := rows.Scan(&rp.ReportID, &rp.Details, &rp.Status, &rp.CharacterID, &rp.CharacterName, &rp.CreatedAt, &rp.AdminReply, &rp.RepliedAt); err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "โหลดรายงานไม่สำเร็จ")
+		}
+		reports = append(reports, rp)
+	}
+
+	return writeJSON(c, fiber.StatusOK, reports)
+}
