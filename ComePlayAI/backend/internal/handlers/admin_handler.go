@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"log"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -190,49 +189,19 @@ func (h *AdminHandler) ListAllCharacters(c *fiber.Ctx) error {
 
 // ----- แอดมินลบตัวละครใดก็ได้ -----
 
-// ตารางที่มี character_id เป็น foreign key (ต้องลบก่อนลบตัวละคร)
-var characterDependentTables = []string{
-	"chats", "user_playlist_characters", "favorites", "character_reviews",
-	"reports", "evaluations", "evaluation_prompts", "diaries", "quiz_attempts",
-}
-
 func (h *AdminHandler) DeleteCharacter(c *fiber.Ctx) error {
 	characterID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
-	// ลบข้อมูลที่ผูกกับตัวละครเองทีละตาราง แล้วค่อยลบตัวละคร ทั้งหมดอยู่ใน transaction เดียว
-	// ทำให้ลบได้แม้ฐานข้อมูลจริงไม่ได้ตั้ง ON DELETE CASCADE ไว้ (ข้ามตารางที่ไม่มีอยู่)
-	tx, err := h.DB.Begin()
+	// แอดมินลบได้ทุกตัว (ownerID = 0 คือไม่ตรวจเจ้าของ)
+	affected, err := deleteCharacterCascade(h.DB, characterID, 0)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
-	defer tx.Rollback()
-
-	for _, table := range characterDependentTables {
-		var exists bool
-		if err := tx.QueryRow(`SELECT to_regclass($1) IS NOT NULL`, "public."+table).Scan(&exists); err != nil || !exists {
-			continue
-		}
-		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE character_id = $1`, characterID); err != nil {
-			log.Printf("admin delete character %d: ลบจากตาราง %s ไม่สำเร็จ: %v", characterID, table, err)
-			return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ (ข้อมูลที่เกี่ยวข้องลบไม่ครบ)")
-		}
-	}
-
-	result, err := tx.Exec(`DELETE FROM characters WHERE character_id = $1`, characterID)
-	if err != nil {
-		log.Printf("admin delete character %d: %v", characterID, err)
-		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
-	}
-	affected, _ := result.RowsAffected()
 	if affected == 0 {
 		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้")
-	}
-
-	if err := tx.Commit(); err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
 
 	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
