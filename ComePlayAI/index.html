@@ -430,7 +430,7 @@
                     <div class="relative"><input type="text" id="search-input" onkeyup="filterCharacters()" placeholder="ค้นหาชื่อตัวละคร..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white shadow-sm"><i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i></div>
                 </div>
                 <div id="character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
-                    <div id="create-new-btn" class="bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center h-full min-h-[280px] hover:bg-slate-200 hover:border-indigo-400 transition cursor-pointer text-slate-500 hover:text-indigo-600" onclick="openCreateCharMode()">
+                    <div id="create-new-btn" class="hidden bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center h-full min-h-[280px] hover:bg-slate-200 hover:border-indigo-400 transition cursor-pointer text-slate-500 hover:text-indigo-600" onclick="openCreateCharMode()">
                         <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3"><i class="fa-solid fa-plus text-2xl"></i></div>
                         <span class="font-medium">สร้างตัวละครใหม่</span>
                     </div>
@@ -838,7 +838,7 @@
             <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-user-pen"></i></div>
             <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">4.</span>สร้างตัวละครของคุณเอง</h3>
             </div>
-            <p class="text-slate-600 mb-4 leading-relaxed">กด "สร้างตัวละคร" ในเมนูด้านซ้าย หรือกดการ์ด "สร้างตัวละครใหม่" บนหน้าหลัก</p>
+            <p class="text-slate-600 mb-4 leading-relaxed">กดเมนู "สร้างตัวละคร" ทางด้านซ้าย</p>
             <ol class="space-y-3 mb-4">
             <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">เลือกรูปหรือวิดีโอของตัวละคร: กด "อัปโหลดไฟล์" (รูปภาพ หรือวิดีโอสั้น MP4 ขนาดไม่เกิน 20 MB) หรือกด "สุ่มรูปภาพ" ถ้ายังไม่มีรูป</span></li>
             <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">ตั้งชื่อตัวละคร เช่น มะลิ หรือ พี่จอห์น</span></li>
@@ -998,9 +998,9 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-1">
-                            <button onclick="openQuizModal()" class="text-slate-400 hover:text-indigo-600 transition p-2 rounded-full hover:bg-indigo-50" title="มินิเกมตอบคำถามเกี่ยวกับตัวละครนี้"><i class="fa-solid fa-gamepad"></i></button>
-                            <button onclick="showReviewModal()" class="text-slate-400 hover:text-amber-500 transition p-2 rounded-full hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star"></i></button>
-                            <button onclick="showReportModal()" class="text-slate-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag"></i></button>
+                            <button onclick="openQuizModal()" class="flex flex-col items-center text-slate-400 hover:text-indigo-600 transition px-2 py-1.5 rounded-xl hover:bg-indigo-50" title="มินิเกมตอบคำถามเกี่ยวกับตัวละครนี้"><i class="fa-solid fa-circle-question text-lg"></i><span class="text-[10px] leading-none mt-1 font-medium whitespace-nowrap">Quiz Game</span></button>
+                            <button onclick="showReviewModal()" class="flex flex-col items-center text-slate-400 hover:text-amber-500 transition px-2 py-1.5 rounded-xl hover:bg-amber-50" title="ให้คะแนนตัวละครนี้"><i class="fa-solid fa-star text-lg"></i><span class="text-[10px] leading-none mt-1 font-medium whitespace-nowrap">ให้คะแนน</span></button>
+                            <button onclick="showReportModal()" class="flex flex-col items-center text-slate-400 hover:text-red-500 transition px-2 py-1.5 rounded-xl hover:bg-red-50" title="รายงานตัวละครนี้"><i class="fa-solid fa-flag text-lg"></i><span class="text-[10px] leading-none mt-1 font-medium whitespace-nowrap">รายงาน</span></button>
                         </div>
                     </div>
                     <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col scroll-smooth">
