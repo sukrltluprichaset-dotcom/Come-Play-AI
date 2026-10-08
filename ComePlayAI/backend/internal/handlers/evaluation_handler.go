@@ -25,6 +25,10 @@ type evaluationAnswer struct {
 }
 
 type submitEvaluationRequest struct {
+	// เดิมไม่มีฟิลด์นี้เลย ทั้งที่หน้าเว็บ (submitQuestionnaire ใน index.html) ส่ง character_id
+	// มาด้วยทุกครั้งตอนกด "ส่งแบบประเมิน" — Go แค่เพิกเฉยฟิลด์ที่ struct ไม่รู้จักตอน BodyParser
+	// เลยไม่ error ให้เห็น แต่คำตอบที่บันทึกไว้ในตาราง evaluations เลยไม่รู้เลยว่าเป็นของตัวละครไหน
+	// รู้แค่ว่า user คนไหนตอบเท่านั้น แก้โดยรับค่านี้เข้ามาจริง ๆ แล้วบันทึกลง DB ด้วย
 	CharacterID int64              `json:"character_id"`
 	Answers     []evaluationAnswer `json:"answers"`
 }
@@ -85,6 +89,8 @@ func (h *EvaluationHandler) Submit(c *fiber.Ctx) error {
 		saved = append(saved, ev)
 	}
 
+	// บันทึกว่า user คนนี้ตอบแบบประเมินของตัวละครนี้ไปแล้วจริง (answered = true)
+	// กัน popup ชวนตอบแบบประเมินเด้งถามซ้ำตัวละครเดิมอีกในครั้งต่อไป
 	if _, err := tx.Exec(
 		`INSERT INTO evaluation_prompts (user_id, character_id, answered)
 		 VALUES ($1, $2, true)
