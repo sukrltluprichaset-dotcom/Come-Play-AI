@@ -392,6 +392,7 @@
                     <button onclick="showView('ranking-view', 'nav-ranking')" id="nav-ranking" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-trophy w-5 text-center"></i><span>อันดับยอดนิยม</span></button>
                     <button onclick="showView('diary-view', 'nav-diary')" id="nav-diary" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-book-journal-whills w-5 text-center"></i><span>บันทึกประจำวัน</span></button>
                     <button onclick="showView('history-view', 'nav-history')" id="nav-history" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i><span>ประวัติทำรายการ</span></button>
+                    <button onclick="showView('help-view', 'nav-help')" id="nav-help" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-circle-question w-5 text-center"></i><span>วิธีใช้งาน</span></button>
                 </nav>
             </div>
             <div class="p-4 border-t border-indigo-800 bg-indigo-950">
@@ -419,6 +420,8 @@
                     <button onclick="showDailyRewardModal()" class="relative z-10 bg-white text-indigo-600 font-bold py-3 px-6 rounded-full hover:bg-indigo-50 hover:scale-105 transition transform shadow-md flex items-center space-x-2"><i class="fa-solid fa-gift text-xl"></i><span>รับรางวัลรายวัน</span></button>
                     <i class="fa-solid fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-20"></i>
                 </div>
+
+                <p class="text-sm text-slate-500 mb-6 -mt-4"><i class="fa-solid fa-circle-question text-indigo-400 mr-1"></i>เพิ่งเริ่มใช้งาน? <button type="button" onclick="showView('help-view', 'nav-help')" class="text-indigo-600 hover:text-indigo-800 font-bold underline">ดูวิธีใช้งานทั้งหมด</button></p>
 
                 <div id="home-playlists-container" class="space-y-8 mb-10"></div>
 
@@ -752,6 +755,229 @@
                     </div>
                 </div>
             </div>
+
+            <div id="help-view" class="view-section flex-1 overflow-y-auto p-4 sm:p-8 hidden animate-fade-in">
+            <div class="max-w-4xl mx-auto">
+            <button onclick="showView('dashboard-view', 'nav-home')" class="text-slate-500 hover:text-indigo-600 font-medium mb-6 flex items-center transition"><i class="fa-solid fa-arrow-left mr-2"></i> กลับหน้าหลัก</button>
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 sm:p-8 text-white mb-6 relative overflow-hidden"><div class="relative z-10"><h2 class="text-3xl font-bold mb-2"><i class="fa-solid fa-circle-question mr-2"></i> วิธีใช้งาน Come Play AI</h2><p class="text-indigo-100">คู่มือสำหรับผู้ใช้ใหม่ ตั้งแต่สมัครสมาชิก สร้างตัวละคร ไปจนถึงเก็บเหรียญและชวนเพื่อน</p></div><i class="fa-solid fa-book-open absolute -right-6 -bottom-6 text-9xl text-white opacity-20 transform -rotate-12"></i></div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h3 class="font-bold text-slate-800 mb-1">เริ่มต้นใน 5 ขั้นตอน</h3>
+            <p class="text-sm text-slate-500 mb-4">กดแต่ละขั้นเพื่อข้ามไปดูรายละเอียด</p>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <button type="button" onclick="helpScrollTo('help-start')" class="bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl p-4 text-center transition"><div class="w-10 h-10 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center mb-2"><i class="fa-solid fa-user-plus"></i></div><p class="text-xs text-slate-400 font-bold">ขั้นที่ 1</p><p class="text-sm font-bold text-slate-700">สมัครสมาชิก</p></button>
+            <button type="button" onclick="helpScrollTo('help-coins')" class="bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl p-4 text-center transition"><div class="w-10 h-10 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center mb-2"><i class="fa-solid fa-coins"></i></div><p class="text-xs text-slate-400 font-bold">ขั้นที่ 2</p><p class="text-sm font-bold text-slate-700">รับเหรียญ</p></button>
+            <button type="button" onclick="helpScrollTo('help-create')" class="bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl p-4 text-center transition"><div class="w-10 h-10 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center mb-2"><i class="fa-solid fa-user-pen"></i></div><p class="text-xs text-slate-400 font-bold">ขั้นที่ 3</p><p class="text-sm font-bold text-slate-700">สร้างตัวละคร</p></button>
+            <button type="button" onclick="helpScrollTo('help-chat')" class="bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl p-4 text-center transition"><div class="w-10 h-10 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center mb-2"><i class="fa-solid fa-comments"></i></div><p class="text-xs text-slate-400 font-bold">ขั้นที่ 4</p><p class="text-sm font-bold text-slate-700">เริ่มแชท</p></button>
+            <button type="button" onclick="helpScrollTo('help-rate')" class="bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl p-4 text-center transition"><div class="w-10 h-10 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center mb-2"><i class="fa-solid fa-star"></i></div><p class="text-xs text-slate-400 font-bold">ขั้นที่ 5</p><p class="text-sm font-bold text-slate-700">ให้คะแนน</p></button>
+            </div></div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h3 class="font-bold text-slate-800 mb-3">สารบัญ</h3>
+            <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+            <button type="button" onclick="helpScrollTo('help-start')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">1.</span>เริ่มต้นใช้งาน</button>
+            <button type="button" onclick="helpScrollTo('help-coins')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">2.</span>เหรียญ (Coins)</button>
+            <button type="button" onclick="helpScrollTo('help-home')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">3.</span>หน้าหลัก</button>
+            <button type="button" onclick="helpScrollTo('help-create')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">4.</span>สร้างตัวละครของคุณเอง</button>
+            <button type="button" onclick="helpScrollTo('help-chat')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">5.</span>คุยกับตัวละคร</button>
+            <button type="button" onclick="helpScrollTo('help-rate')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">6.</span>ให้คะแนนและรายงานตัวละคร</button>
+            <button type="button" onclick="helpScrollTo('help-quiz')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">7.</span>มินิเกมตอบคำถาม</button>
+            <button type="button" onclick="helpScrollTo('help-ranking')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">8.</span>อันดับยอดนิยม</button>
+            <button type="button" onclick="helpScrollTo('help-collections')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">9.</span>ถูกใจ เพลย์ลิสต์ และบทบาท</button>
+            <button type="button" onclick="helpScrollTo('help-diary')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">10.</span>บันทึกประจำวันและสถิติตัวละครของฉัน</button>
+            <button type="button" onclick="helpScrollTo('help-referral')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">11.</span>ชวนเพื่อนรับเหรียญ</button>
+            <button type="button" onclick="helpScrollTo('help-account')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">12.</span>โปรไฟล์ ตั้งค่า และประวัติทำรายการ</button>
+            <button type="button" onclick="helpScrollTo('help-faq')" class="text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 transition"><span class="text-slate-400 mr-1">13.</span>คำถามที่พบบ่อย</button>
+            </div></div>
+            <div class="space-y-6">
+            <section id="help-start" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-rocket"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">1.</span>เริ่มต้นใช้งาน</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">ดูตัวละครและอันดับยอดนิยมได้ตั้งแต่ยังไม่สมัคร แต่ต้องมีบัญชีก่อนถึงจะเริ่มแชทและสร้างตัวละครของตัวเองได้</p>
+            <ol class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">กดปุ่ม "สมัครสมาชิก" มุมขวาบนของหน้าแรก</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">กรอกชื่อผู้ใช้งาน อีเมล และรหัสผ่าน (อย่างน้อย 8 ตัวอักษร) ถ้ามีโค้ดชวนเพื่อน ให้ใส่ในช่อง "โค้ดชวนเพื่อน" จะได้เหรียญต้อนรับ 20 เหรียญ</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">3</span><span class="text-slate-700 leading-relaxed">พิมพ์รหัสยืนยันความปลอดภัยให้ตรงกับที่เห็นในภาพ แล้วกด "สมัครสมาชิก"</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">4</span><span class="text-slate-700 leading-relaxed">ครั้งต่อไปกด "เข้าสู่ระบบ" แล้วใช้ชื่อผู้ใช้งานหรืออีเมลอย่างใดอย่างหนึ่งก็ได้</span></li>
+            </ol>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">ลืมรหัสผ่าน: กด "ลืมรหัสผ่าน?" ที่หน้าเข้าสู่ระบบ ใส่อีเมล ระบบจะส่งลิงก์ตั้งรหัสใหม่ให้ (ลิงก์ใช้ได้ 1 ชั่วโมง ถ้าไม่เห็นอีเมลให้ดูในโฟลเดอร์สแปม)</p></div>
+            <figure class="mt-5"><img src="help-images/01-register.png" alt="หน้าสมัครสมาชิก" loading="lazy" data-caption="หน้าสมัครสมาชิก" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าสมัครสมาชิก</figcaption></figure>
+            </section>
+            <section id="help-coins" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-coins"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">2.</span>เหรียญ (Coins)</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">เหรียญใช้จ่ายค่าส่งข้อความ การส่งข้อความหาตัวละคร 1 ข้อความใช้ 2 เหรียญ ดูยอดคงเหลือได้ที่มุมซ้ายล่างของเมนู</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">รางวัลรายวัน:</b> กดปุ่ม "รับรางวัลรายวัน" ที่แบนเนอร์บนหน้าหลัก รับได้วันละครั้ง จำนวนเหรียญเป็นไปตามที่ระบบกำหนด</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ชวนเพื่อน:</b> เมื่อเพื่อนสมัครด้วยโค้ดของคุณสำเร็จ คุณได้ 50 เหรียญทันที (เพื่อนได้ 20 เหรียญ)</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">มินิเกมตอบคำถาม:</b> ตอบถูกข้อละ 5 เหรียญ เล่นได้วันละ 2 รอบ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ร้านค้าเหรียญ:</b> กดปุ่มเติมเหรียญข้างยอดเหรียญ เลือกแพ็กเกจและช่องทางชำระ ตอนนี้เป็นการสาธิตเท่านั้น ไม่มีการตัดเงินจริง</span></li>
+            </ul>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">ถ้าเหรียญไม่พอส่งข้อความ ระบบจะแจ้งเตือนและไม่ตัดเหรียญ ไปรับเหรียญจากช่องทางข้างบนแล้วกลับมาคุยต่อได้</p></div>
+            <figure class="mt-5"><img src="help-images/02-coins.png" alt="ยอดเหรียญและปุ่มเติมเหรียญที่เมนูด้านซ้าย" loading="lazy" data-caption="ยอดเหรียญและปุ่มเติมเหรียญที่เมนูด้านซ้าย" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: ยอดเหรียญและปุ่มเติมเหรียญที่เมนูด้านซ้าย</figcaption></figure>
+            </section>
+            <section id="help-home" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-house"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">3.</span>หน้าหลัก</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">หน้านี้รวมตัวละครของคุณและตัวละครที่คนอื่นแชร์ไว้</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">แบนเนอร์รางวัลรายวัน:</b> ด้านบนสุด กดเพื่อรับเหรียญประจำวัน</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">เพื่อนของคุณ:</b> การ์ดตัวละครที่คุณสร้างเอง แต่ละการ์ดมีรูป คะแนนดาว ชื่อ และนิสัยโดยย่อ กดปุ่มแชทเพื่อเริ่มคุย ไอคอนดินสอคือแก้ไข ไอคอนถังขยะคือลบ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ค้นหา:</b> พิมพ์ชื่อตัวละครในช่องค้นหาเพื่อกรองรายการ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ค้นหาตัวละครสาธารณะ:</b> ตัวละครที่ผู้ใช้คนอื่นสร้างและแชร์ไว้ กดไอคอนหัวใจเพื่อเก็บเป็นตัวละครที่ถูกใจ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">เพลย์ลิสต์:</b> ถ้าคุณจัดกลุ่มตัวละครไว้ จะแสดงเป็นแถวของตัวเองบนหน้าหลัก (ดูหัวข้อถูกใจ เพลย์ลิสต์ และบทบาท)</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/03-home.png" alt="หน้าหลัก" loading="lazy" data-caption="หน้าหลัก" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าหลัก</figcaption></figure>
+            </section>
+            <section id="help-create" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-user-pen"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">4.</span>สร้างตัวละครของคุณเอง</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">กด "สร้างตัวละคร" ในเมนูด้านซ้าย หรือกดการ์ด "สร้างตัวละครใหม่" บนหน้าหลัก</p>
+            <ol class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">เลือกรูปหรือวิดีโอของตัวละคร: กด "อัปโหลดไฟล์" (รูปภาพ หรือวิดีโอสั้น MP4 ขนาดไม่เกิน 20 MB) หรือกด "สุ่มรูปภาพ" ถ้ายังไม่มีรูป</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">ตั้งชื่อตัวละคร เช่น มะลิ หรือ พี่จอห์น</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">3</span><span class="text-slate-700 leading-relaxed">เขียน "บุคลิกนิสัย" ของตัวละคร AI จะสวมบทบาทตามข้อความนี้ตลอดการแชท</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">4</span><span class="text-slate-700 leading-relaxed">เลือกสถานะการแชร์: "สาธารณะ" คนอื่นค้นหาเจอและคุยด้วยได้ หรือ "ส่วนตัว" คุยได้คนเดียว</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">5</span><span class="text-slate-700 leading-relaxed">กด "บันทึกตัวละคร" ตัวละครจะไปอยู่ในหน้าหลักของคุณทันที</span></li>
+            </ol>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">เขียนบุคลิกให้ชัดจะได้ตัวละครที่มีชีวิตชีวา ใส่อายุ นิสัย น้ำเสียง วิธีลงท้ายประโยค และสิ่งที่ชอบ เช่น "คุณคือสาวน้อยวัย 20 ปี ร่าเริง สดใส ให้คำปรึกษาเก่ง ลงท้ายประโยคด้วยค่ะ"</p></div>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">แก้บุคลิก รูป หรือสถานะการแชร์ภายหลังได้ด้วยไอคอนดินสอบนการ์ดตัวละคร ถ้าลบตัวละคร ประวัติแชทของตัวละครนั้นจะหายไปด้วย</p></div>
+            <figure class="mt-5"><img src="help-images/04-create-character.png" alt="หน้าสร้างตัวละครใหม่" loading="lazy" data-caption="หน้าสร้างตัวละครใหม่" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าสร้างตัวละครใหม่</figcaption></figure>
+            </section>
+            <section id="help-chat" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-comments"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">5.</span>คุยกับตัวละคร</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">นี่คือหัวใจของแอป เลือกตัวละครจากหน้าหลัก ผลการค้นหา อันดับยอดนิยม หรือรายการที่ถูกใจ แล้วกดปุ่ม "แชท"</p>
+            <ol class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">พิมพ์ข้อความในช่องด้านล่างของห้องแชท แล้วกด "ส่ง"</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">รอสักครู่ ตัวละครจะตอบกลับ (ระหว่างรอจะเห็นจุดสามจุดกระพริบ) การส่งแต่ละข้อความใช้ 2 เหรียญ</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">3</span><span class="text-slate-700 leading-relaxed">คุยต่อได้เรื่อยๆ ตัวละครจำเรื่องที่เคยคุยกันได้ แม้จะผ่านมาหลายวันแล้ว</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">4</span><span class="text-slate-700 leading-relaxed">เมื่อพอแล้ว กดปุ่มลูกศรออกจากการสนทนาที่มุมบนซ้ายของห้องแชท</span></li>
+            </ol>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ปุ่มบนหัวห้องแชท:</b> มี 4 ปุ่ม: ออกจากการสนทนา, มินิเกมตอบคำถามเกี่ยวกับตัวละครนี้, ให้คะแนนตัวละคร, และรายงานตัวละคร</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">หลังออกจากห้อง:</b> ระบบอาจถามความรู้สึกของคุณหลังคุย (ข้ามได้) และให้ทำแบบประเมิน 10 ข้อเพื่อช่วยปรับปรุงระบบ (ข้ามได้ทั้งหมดเช่นกัน)</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">บันทึกประจำวัน:</b> เรื่องที่คุยกันจะถูกสรุปเก็บไว้ในเมนู "บันทึกประจำวัน" โดยอัตโนมัติ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">บทบาทของคุณ:</b> ถ้าตั้งบทบาท/สถานการณ์ไว้ ตัวละครจะคุยกับคุณตามบทบาทนั้น (ดูหัวข้อถูกใจ เพลย์ลิสต์ และบทบาท)</span></li>
+            </ul>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">ตัวละครส่วนตัวของผู้ใช้คนอื่นเปิดคุยไม่ได้ คุยได้เฉพาะตัวละครของคุณเองและตัวละครสาธารณะ</p></div>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">ข้อความของตัวละครสร้างโดย AI อาจผิดพลาดได้ และไม่ใช่คนจริง</p></div>
+            <figure class="mt-5"><img src="help-images/05-chat.png" alt="ห้องแชทกับตัวละคร" loading="lazy" data-caption="ห้องแชทกับตัวละคร" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: ห้องแชทกับตัวละคร</figcaption></figure>
+            </section>
+            <section id="help-rate" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-star"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">6.</span>ให้คะแนนและรายงานตัวละคร</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">ทั้งสองปุ่มอยู่ที่หัวห้องแชท</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ให้คะแนน (ไอคอนดาว):</b> เลือก 1-5 ดาว พิมพ์ความคิดเห็นถ้าต้องการ (ไม่บังคับ) แล้วกด "ส่งรีวิว" ถ้ารีวิวตัวละครเดิมซ้ำ ระบบจะแก้คะแนนเดิมของคุณ ไม่นับเป็นรีวิวใหม่ ดาวบนการ์ดคือค่าเฉลี่ยของทุกรีวิว</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">รายงาน (ไอคอนธง):</b> ถ้า AI ใช้คำพูดรุนแรงหรือมีเนื้อหาไม่เหมาะสม ให้พิมพ์ข้อความที่พบปัญหาแล้วกด "ส่งรายงาน" ผู้ดูแลระบบจะตรวจสอบ</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/06-review-report.png" alt="หน้าต่างให้คะแนนตัวละคร" loading="lazy" data-caption="หน้าต่างให้คะแนนตัวละคร" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าต่างให้คะแนนตัวละคร</figcaption></figure>
+            </section>
+            <section id="help-quiz" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-gamepad"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">7.</span>มินิเกมตอบคำถาม</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">เล่นเพื่อหาเหรียญเพิ่ม ต้องเปิดห้องแชทของตัวละครที่ต้องการก่อน</p>
+            <ol class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">ในห้องแชท กดไอคอนมินิเกมที่หัวห้อง แล้วกด "เริ่มเล่น"</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">รอสักครู่ AI จะแต่งคำถามปรนัย 5 ข้อเกี่ยวกับตัวละครนั้น คำถามสุ่มใหม่ทุกรอบ</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">3</span><span class="text-slate-700 leading-relaxed">เลือกคำตอบให้ครบทุกข้อ ระบบจะสรุปคะแนนและเหรียญที่ได้</span></li>
+            </ol>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">ตอบถูกข้อละ 5 เหรียญ (สูงสุด 25 เหรียญต่อรอบ) เล่นได้วันละ 2 รอบ</p></div>
+            <figure class="mt-5"><img src="help-images/07-quiz.png" alt="มินิเกมตอบคำถาม" loading="lazy" data-caption="มินิเกมตอบคำถาม" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: มินิเกมตอบคำถาม</figcaption></figure>
+            </section>
+            <section id="help-ranking" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-trophy"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">8.</span>อันดับยอดนิยม</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">เมนู "อันดับยอดนิยม" แสดง 10 ตัวละครสาธารณะที่ได้รับความนิยมสูงสุด</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ลำดับคิดจากอะไร:</b> ครึ่งหนึ่งมาจากคะแนนดาวรีวิว อีกครึ่งมาจากจำนวนครั้งที่ตัวละครถูกใช้แชท เทียบกับตัวละครที่ถูกใช้มากที่สุดในระบบ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ทำไมไม่เรียงตามดาวอย่างเดียว:</b> ตัวละครที่มีรีวิวน้อยมาก (เช่น 1 รีวิว 5 ดาว) ยังไม่น่าเชื่อถือเท่าตัวที่มีรีวิวหลายคน ระบบจึงถ่วงดาวตามจำนวนรีวิว และตัวที่ยังไม่มีรีวิวถูกนับเป็นระดับกลาง</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ตัวเลขที่เห็นในแถว:</b> คือดาวเฉลี่ยกับจำนวนครั้งที่ใช้งาน ไม่ใช่คะแนนรวม จึงเป็นเรื่องปกติที่ลำดับไม่เรียงตามดาวหรือยอดใช้อย่างใดอย่างหนึ่ง</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/08-ranking.png" alt="หน้าอันดับยอดนิยม" loading="lazy" data-caption="หน้าอันดับยอดนิยม" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าอันดับยอดนิยม</figcaption></figure>
+            </section>
+            <section id="help-collections" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-heart"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">9.</span>ถูกใจ เพลย์ลิสต์ และบทบาท</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">เมนูเหล่านี้อยู่ที่หน้าโปรไฟล์ กดรูปและชื่อของคุณที่มุมซ้ายล่าง แล้วดูในส่วน "เมนูของฉัน"</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ตัวละครที่ถูกใจ:</b> กดไอคอนหัวใจที่การ์ดตัวละครหรือแถวในอันดับเพื่อเก็บไว้ ดูรวมได้ที่ "ตัวละครที่ถูกใจ / จัดเก็บ" กดหัวใจอีกครั้งเพื่อเลิกถูกใจ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">จัดการเพลย์ลิสต์หน้าแรก:</b> ตั้งชื่อเพลย์ลิสต์ เช่น "คู่จิ้น" หรือ "เพื่อนคุยเล่น" กดสร้าง แล้วเพิ่มตัวละครเข้าไป (ค้นหาชื่อได้) เพลย์ลิสต์จะโชว์เป็นแถวบนหน้าหลักของคุณ</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">บทบาท / สถานการณ์ของคุณ:</b> บอกว่าคุณเป็นใครในบทสนทนา เช่น "นักผจญภัย" หรือ "เพื่อนสนิท" พร้อมคำอธิบายสั้นๆ แล้วเลือกใช้บทบาทนั้น ตัวละครทุกตัวจะคุยกับคุณตามบทบาทที่เลือกไว้ ใช้ได้ทีละ 1 บทบาท</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/09-profile-menu.png" alt="หน้าโปรไฟล์และเมนูของฉัน" loading="lazy" data-caption="หน้าโปรไฟล์และเมนูของฉัน" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าโปรไฟล์และเมนูของฉัน</figcaption></figure>
+            </section>
+            <section id="help-diary" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-book-journal-whills"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">10.</span>บันทึกประจำวันและสถิติตัวละครของฉัน</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">ทั้งสองเมนูอยู่ในแถบด้านซ้าย</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">บันทึกประจำวัน:</b> ระบบ AI สรุปเรื่องที่คุณคุยในแต่ละวันมาเก็บไว้ให้โดยอัตโนมัติ เมื่อคุยแล้วออกจากห้องแชท ให้กลับมาดูที่นี่</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">สถิติตัวละครของฉัน:</b> สำหรับคนที่สร้างตัวละคร ดูจำนวนการใช้งาน คะแนนรีวิว และความคิดเห็นที่ผู้อื่นให้ตัวละครของคุณ (เห็นเฉพาะเจ้าของ)</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/10-diary-studio.png" alt="หน้าบันทึกประจำวัน" loading="lazy" data-caption="หน้าบันทึกประจำวัน" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าบันทึกประจำวัน</figcaption></figure>
+            </section>
+            <section id="help-referral" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-user-group"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">11.</span>ชวนเพื่อนรับเหรียญ</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">ไปที่โปรไฟล์ แล้วเลือก "ชวนเพื่อน"</p>
+            <ol class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">1</span><span class="text-slate-700 leading-relaxed">กด "คัดลอกโค้ด" หรือ "คัดลอกลิงก์ชวนเพื่อน"</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">2</span><span class="text-slate-700 leading-relaxed">ส่งให้เพื่อน เพื่อนใส่โค้ดตอนสมัครสมาชิก</span></li>
+            <li class="flex items-start space-x-3"><span class="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5">3</span><span class="text-slate-700 leading-relaxed">เมื่อเพื่อนสมัครสำเร็จ คุณได้ 50 เหรียญทันที และเพื่อนได้เหรียญต้อนรับ 20 เหรียญ</span></li>
+            </ol>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3 flex items-start space-x-3"><i class="fa-solid fa-lightbulb text-indigo-500 mt-0.5 shrink-0"></i><p class="text-sm text-slate-700 leading-relaxed">หน้าเดียวกันแสดงจำนวนเพื่อนที่ชวนสำเร็จ เหรียญที่ได้รับทั้งหมด และประวัติการชวน</p></div>
+            <figure class="mt-5"><img src="help-images/11-referral.png" alt="หน้าชวนเพื่อน" loading="lazy" data-caption="หน้าชวนเพื่อน" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าชวนเพื่อน</figcaption></figure>
+            </section>
+            <section id="help-account" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-gear"></i></div>
+            <h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">12.</span>โปรไฟล์ ตั้งค่า และประวัติทำรายการ</h3>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">กดรูปและชื่อของคุณที่มุมซ้ายล่างเพื่อเข้าโปรไฟล์ กดไอคอนเฟืองเพื่อเข้าตั้งค่า</p>
+            <ul class="space-y-3 mb-4">
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">โปรไฟล์:</b> เปลี่ยนรูปโปรไฟล์ด้วยไอคอนกล้อง แก้ชื่อผู้ใช้งานและอีเมล ถ้าจะเปลี่ยนรหัสผ่านให้กรอกรหัสเดิม รหัสใหม่ (อย่างน้อย 8 ตัวอักษร) และยืนยันรหัสใหม่ ถ้าไม่เปลี่ยนให้เว้นว่างไว้</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ตั้งค่า:</b> เปิด/ปิดโหมดมืด และเสียงแจ้งเตือนเมื่อมีข้อความตอบกลับใหม่ในแชท</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ประวัติทำรายการ:</b> เมนูด้านซ้าย แสดงรายการเติมเหรียญทั้งหมดของคุณ มีปุ่มเติมเงินเพิ่มอยู่ในหน้าเดียวกัน</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ออกจากระบบ:</b> ไอคอนลูกศรสีแดงที่มุมซ้ายล่าง</span></li>
+            <li class="flex items-start space-x-3"><i class="fa-solid fa-circle-check text-indigo-400 mt-1.5 shrink-0"></i><span class="text-slate-700 leading-relaxed"><b class="text-slate-800">ลบบัญชี:</b> อยู่ในหน้าตั้งค่า ส่วนพื้นที่อันตราย ลบแล้วข้อมูลทั้งหมดรวมถึงตัวละครของคุณจะหายถาวรและกู้คืนไม่ได้</span></li>
+            </ul>
+            <figure class="mt-5"><img src="help-images/12-settings.png" alt="หน้าตั้งค่า" loading="lazy" data-caption="หน้าตั้งค่า" onerror="helpImgFallback(this)" class="w-full max-w-2xl mx-auto rounded-xl border border-slate-200 shadow-sm"><figcaption class="text-center text-xs text-slate-400 mt-2">ภาพประกอบ: หน้าตั้งค่า</figcaption></figure>
+            </section>
+            <section id="help-faq" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 scroll-mt-4">
+            <div class="flex items-center space-x-3 mb-4"><div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-circle-question"></i></div><h3 class="text-xl font-bold text-slate-800"><span class="text-slate-400 font-medium mr-1">13.</span>คำถามที่พบบ่อย</h3></div>
+            <div class="divide-y divide-slate-100">
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>เหรียญหมดแล้วทำอย่างไร</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">รับรางวัลรายวัน ชวนเพื่อน เล่นมินิเกมตอบคำถาม หรือเติมเหรียญในร้านค้า (ตอนนี้เป็นระบบสาธิต ไม่ตัดเงินจริง)</p></details>
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>ตัวละครตอบไม่ตรงกับบุคลิกที่ตั้งไว้</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">ลองแก้บุคลิกให้ละเอียดขึ้นด้วยไอคอนดินสอ ใส่น้ำเสียง วิธีพูด และสิ่งที่ตัวละครชอบหรือไม่ชอบ แล้วคุยใหม่</p></details>
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>ตัวละครของฉันคนอื่นเห็นไหม</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">ถ้าตั้งเป็น "สาธารณะ" ทุกคนค้นหาเจอและคุยด้วยได้ ถ้าตั้งเป็น "ส่วนตัว" คุยได้เฉพาะคุณ</p></details>
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>ลบตัวละครของคนอื่นได้ไหม</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">ไม่ได้ ผู้ใช้ลบได้เฉพาะตัวละครที่ตัวเองสร้าง ถ้าพบตัวละครที่ไม่เหมาะสม ให้กดรายงานในห้องแชท</p></details>
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>ข้อความจาก AI เชื่อถือได้แค่ไหน</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">ตัวละครเป็น AI ไม่ใช่คนจริง คำตอบอาจผิดพลาดได้ ไม่ควรใช้แทนคำแนะนำของแพทย์ นักจิตวิทยา หรือผู้เชี่ยวชาญ ถ้ารู้สึกไม่สบายใจกับบทสนทนา ให้ออกจากห้องแชทและรายงานตัวละคร</p></details>
+            <details class="group py-3"><summary class="cursor-pointer font-bold text-slate-700 hover:text-indigo-600 transition flex items-center justify-between list-none"><span>ลืมรหัสผ่านทำอย่างไร</span><i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition"></i></summary><p class="text-slate-600 text-sm leading-relaxed mt-2">กด "ลืมรหัสผ่าน?" ที่หน้าเข้าสู่ระบบ ใส่อีเมลที่สมัครไว้ แล้วทำตามลิงก์ที่ส่งไปทางอีเมล (ลิงก์ใช้ได้ 1 ชั่วโมง)</p></details>
+            </div></section>
+            </div>
+            <div class="h-10"></div>
+            </div></div>
 
             <div id="chat-view" class="view-section flex-1 relative hidden h-full">
                 <div id="chat-bg-container" class="absolute inset-0 bg-cover bg-center overflow-hidden" style="filter: blur(10px); opacity: 0.3;">
@@ -2347,6 +2573,24 @@
                 showView(event.state.appView, event.state.appNav, false);
             }
         });
+
+        // ----- หน้า "วิธีใช้งาน" -----
+        function helpScrollTo(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // ถ้าไม่มีไฟล์ภาพใน help-images/ ให้แสดงกรอบบอกว่าภาพนี้คือหน้าไหนแทน (ไม่ให้เห็นไอคอนรูปแตก)
+        function helpImgFallback(img) {
+            const box = document.createElement('div');
+            box.className = 'w-full max-w-2xl mx-auto rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 py-10 px-4 text-center text-slate-400 text-sm';
+            box.innerHTML = '<i class="fa-regular fa-image text-3xl mb-2 block"></i>';
+            const label = document.createElement('span');
+            label.textContent = 'ภาพประกอบ: ' + (img.dataset.caption || '');
+            box.appendChild(label);
+            img.replaceWith(box);
+            const cap = box.parentElement && box.parentElement.querySelector('figcaption');
+            if (cap) cap.remove();
+        }
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
