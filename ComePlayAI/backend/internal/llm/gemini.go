@@ -15,6 +15,9 @@ import (
 // ลองซ้ำหรือสลับโมเดลสำรองไปก็ไม่มีทางสำเร็จ เพราะทุกโมเดลใช้ตัวกรองความปลอดภัยชุดเดียวกัน
 var ErrContentBlocked = errors.New("เนื้อหาถูกระบบความปลอดภัยของ Gemini ปฏิเสธ")
 
+// errBadRequest หมายถึง Gemini ตอบ 400 (พารามิเตอร์ที่ส่งไปไม่รองรับ) ใช้ตัดสินใจถอยกลับไปส่งแบบไม่ปิด thinking
+var errBadRequest = errors.New("Gemini ตอบ 400 (bad request)")
+
 type GeminiClient struct {
 	APIKey         string
 	Model          string
@@ -53,9 +56,21 @@ type geminiSystemInstruction struct {
 	Parts []geminiPart `json:"parts"`
 }
 
+// geminiThinkingConfig ใช้ปิดโหมด "คิดก่อนตอบ" (thinking) ของโมเดลตระกูล Flash
+// โมเดลแบบ -latest เปิดโหมดนี้เป็นค่าเริ่มต้น ทำให้ทุกคำตอบแชท/ควิซช้าลงหลายวินาทีโดยไม่จำเป็น
+// (แชทตัวละครและการแต่งโจทย์ปรนัยไม่ต้องใช้การให้เหตุผลซับซ้อน)
+type geminiThinkingConfig struct {
+	ThinkingBudget int `json:"thinkingBudget"`
+}
+
+type geminiGenerationConfig struct {
+	ThinkingConfig *geminiThinkingConfig `json:"thinkingConfig,omitempty"`
+}
+
 type geminiRequest struct {
 	Contents          []geminiContent          `json:"contents"`
 	SystemInstruction *geminiSystemInstruction `json:"systemInstruction,omitempty"`
+	GenerationConfig  *geminiGenerationConfig  `json:"generationConfig,omitempty"`
 }
 
 type geminiResponse struct {
@@ -98,6 +113,10 @@ func (c *GeminiClient) callModel(model string, jsonBody []byte) (string, bool, e
 
 	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests {
 		return "", true, fmt.Errorf("โมเดล %s ตอบกลับ error (status %d): %s", model, resp.StatusCode, string(bodyBytes))
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		return "", false, fmt.Errorf("%w: Gemini API (%s) ตอบกลับ error (status %d): %s", errBadRequest, model, resp.StatusCode, string(bodyBytes))
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -148,7 +167,14 @@ func (c *GeminiClient) GenerateReply(personality string, history []ChatTurn, use
 			Parts: []geminiPart{{Text: personality}},
 		},
 	}
-	jsonBody, err := json.Marshal(reqBody)
+	// แบบปกติ (ไม่ระบุ generationConfig) ใช้เป็นแผนสำรองถ้าโมเดลไหนไม่รับการปิด thinking
+	plainBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("แปลงข้อมูลไม่สำเร็จ: %w", err)
+	}
+	// แบบเร็ว: ปิด thinking (thinkingBudget = 0) ลดเวลารอคำตอบลงมาก
+	reqBody.GenerationConfig = &geminiGenerationConfig{ThinkingConfig: &geminiThinkingConfig{ThinkingBudget: 0}}
+	fastBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", fmt.Errorf("แปลงข้อมูลไม่สำเร็จ: %w", err)
 	}
@@ -158,16 +184,28 @@ func (c *GeminiClient) GenerateReply(personality string, history []ChatTurn, use
 	var lastErr error
 
 	for _, model := range modelsToTry {
+		body := fastBody
+		usingFast := true
 		for attempt := 1; attempt <= retriesPerModel; attempt++ {
-			reply, retryable, err := c.callModel(model, jsonBody)
+			reply, retryable, err := c.callModel(model, body)
 			if err == nil {
 				return reply, nil
 			}
 			lastErr = err
+			// โมเดลนี้ไม่รับการปิด thinking (400) ให้ส่งซ้ำทันทีแบบปกติ ไม่เสียรอบ retry และไม่ต้องรอ
+			if errors.Is(err, errBadRequest) && usingFast {
+				usingFast = false
+				body = plainBody
+				reply, retryable, err = c.callModel(model, body)
+				if err == nil {
+					return reply, nil
+				}
+				lastErr = err
+			}
 			if !retryable {
 				return "", lastErr // error ถาวร (ไม่ใช่โหลดสูง) ไม่ต้องลองโมเดลอื่นต่อ
 			}
-			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+			time.Sleep(time.Duration(attempt) * time.Second)
 		}
 	}
 

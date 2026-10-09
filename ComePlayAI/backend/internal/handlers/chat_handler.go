@@ -98,6 +98,18 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
 	}
 
+	// เริ่มแปลงข้อความผู้ใช้เป็นเวกเตอร์ (เรียก Gemini Embedding) "ขนานไปกับ" การดึงประวัติแชทและบทบาทผู้ใช้จาก DB
+	// ด้านล่าง เดิมทำต่อกันทีละขั้น ทำให้เวลารวม = เวลา DB + เวลา Embedding ตอนนี้ใช้เวลาเท่าขั้นที่นานกว่าอย่างเดียว
+	type embedResult struct {
+		vec []float64
+		err error
+	}
+	embedCh := make(chan embedResult, 1)
+	go func() {
+		v, e := h.Gemini.EmbedText(req.Message)
+		embedCh <- embedResult{vec: v, err: e}
+	}()
+
 	// ----- ดึงความจำระยะสั้น: 20 ข้อความล่าสุดในห้องนี้ -----
 	// เดิมดึงมาแค่ sender_type, message ไม่มีเวลาที่พิมพ์กำกับไปด้วยเลย ทำให้ AI ไม่รู้เลยว่าแต่ละข้อความ
 	// ในประวัติห่างจากตอนนี้นานแค่ไหน (ฟีดแบ็กผู้ใช้จริง: บางทีเอาเรื่องที่คุยเมื่อวานมาพูดถึงกับ AI วันนี้
@@ -183,7 +195,8 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	// ----- RAG เฟส 2: ค้นหาความจำระยะยาวที่เกี่ยวข้อง (นอกเหนือจาก 20 ข้อความล่าสุด) -----
 	fullPersonality := roleplayGuide + personality
 
-	userEmbedding, embedErr := h.Gemini.EmbedText(req.Message)
+	er := <-embedCh
+	userEmbedding, embedErr := er.vec, er.err
 	if embedErr != nil {
 		log.Printf("Embedding error (ข้ามการค้นหาความจำระยะยาวรอบนี้): %v", embedErr)
 	} else {
@@ -194,7 +207,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		oldRows, err := h.DB.Query(
 			`SELECT message, embedding FROM chats
 			 WHERE user_id = $1 AND character_id = $2 AND embedding IS NOT NULL
-			 ORDER BY send_time DESC, chat_id DESC OFFSET 20 LIMIT 300`,
+			 ORDER BY send_time DESC, chat_id DESC OFFSET 20 LIMIT 120`,
 			userID, characterID,
 		)
 		if err == nil {
@@ -247,11 +260,6 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง")
 	}
 
-	aiEmbedding, embedErr := h.Gemini.EmbedText(aiReply)
-	if embedErr != nil {
-		log.Printf("Embedding error (คำตอบ AI): %v", embedErr)
-	}
-
 	tx, err := h.DB.Begin()
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
@@ -274,7 +282,7 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		`INSERT INTO chats (sender_type, message, user_id, character_id, embedding)
 		 VALUES ('ai', $1, $2, $3, $4)
 		 RETURNING chat_id, sender_type, message, send_time, user_id, character_id`,
-		aiReply, userID, characterID, pq.Array(aiEmbedding),
+		aiReply, userID, characterID, pq.Array([]float64(nil)),
 	).Scan(&aiChat.ChatID, &aiChat.SenderType, &aiChat.Message, &aiChat.SendTime, &aiChat.UserID, &aiChat.CharacterID)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "รับคำตอบไม่สำเร็จ")
@@ -298,6 +306,22 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	if err := tx.Commit(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
 	}
+
+	// แปลงคำตอบ AI เป็นเวกเตอร์เก็บไว้ค้นความจำระยะยาวในรอบถัดไป ทำ "หลังตอบผู้ใช้แล้ว" เป็นงานเบื้องหลัง
+	// เดิมรอขั้นนี้ให้เสร็จก่อนค่อยตอบ ทำให้ผู้ใช้รอเพิ่มอีก 1 รอบเรียก Gemini โดยไม่จำเป็น
+	// (ถ้าขั้นนี้พลาด แค่คำตอบนี้ไม่ถูกใช้เป็นความทรงจำเก่า แชทยังทำงานปกติ)
+	aiChatID := aiChat.ChatID
+	aiReplyText := aiReply
+	go func() {
+		emb, embErr := h.Gemini.EmbedText(aiReplyText)
+		if embErr != nil {
+			log.Printf("Embedding error (คำตอบ AI): %v", embErr)
+			return
+		}
+		if _, err := h.DB.Exec(`UPDATE chats SET embedding = $1 WHERE chat_id = $2`, pq.Array(emb), aiChatID); err != nil {
+			log.Printf("บันทึก embedding คำตอบ AI ไม่สำเร็จ: %v", err)
+		}
+	}()
 
 	return writeJSON(c, fiber.StatusCreated, fiber.Map{
 		"user_message": userChat,
