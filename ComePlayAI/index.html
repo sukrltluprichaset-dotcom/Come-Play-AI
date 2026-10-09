@@ -1285,7 +1285,7 @@
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer char-card flex flex-col animate-fade-in" data-name="${char.name}" data-character-id="${char.character_id}" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
                             <div class="h-40 bg-emerald-100 relative overflow-hidden">
                                 ${mediaTagHTML}
-                                ${Number(char.review_count) > 0 ? `<div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-emerald-600 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>` : ''}
+                                ${char.is_shared ? `<div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-emerald-600 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>` : ''}
                             </div>
                             <div class="p-4 flex flex-col flex-1">
                                 <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
