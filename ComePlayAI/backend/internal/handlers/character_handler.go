@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"log"
 	"strconv"
 	"strings"
 
@@ -197,17 +196,12 @@ func (h *CharacterHandler) Delete(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusBadRequest, "รหัสตัวละครไม่ถูกต้อง")
 	}
 
-	// แอดมินลบตัวละครของใครก็ได้ ส่วนผู้ใช้ทั่วไปลบได้เฉพาะตัวละครของตัวเอง
-	role, _ := c.Locals(middleware.UserRoleKey).(string)
-	ownerID := userID
-	if role == "admin" {
-		ownerID = 0
-	}
-
-	rowsAffected, err := deleteCharacterCascade(h.DB, id, ownerID)
+	result, err := h.DB.Exec(`DELETE FROM characters WHERE character_id = $1 AND user_id = $2`, id, userID)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ลบตัวละครไม่สำเร็จ")
 	}
+
+	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return writeError(c, fiber.StatusNotFound, "ไม่พบตัวละครนี้ หรือคุณไม่ใช่เจ้าของ")
 	}
@@ -215,6 +209,10 @@ func (h *CharacterHandler) Delete(c *fiber.Ctx) error {
 	return writeJSON(c, fiber.StatusOK, fiber.Map{"message": "ลบตัวละครสำเร็จ"})
 }
 
+// popularityOrderClause คือเงื่อนไข ORDER BY ของ "อันดับยอดนิยม" ที่ถ่วงน้ำหนักระหว่าง "ดาว" กับ "ยอดคุย" อย่างละครึ่ง
+// เพื่อไม่ให้ตัวละครที่เรตติ้ง 0.0 แต่มีคนคุยเยอะ (เช่น 74 ครั้ง) หรือเรตติ้ง 5.0 แต่คุยน้อย (เช่น 15 ครั้ง)
+// ได้เปรียบหรือเสียเปรียบเกินจริงเพียงด้านเดียว (เดิมเรียงด้วย usage_count อย่างเดียว ดาวไม่มีผลเลย)
+//
 //	คะแนนยอดนิยม = 0.5 x คะแนนดาว(0-1) + 0.5 x คะแนนยอดคุย(0-1)
 //	  - คะแนนดาว  = ดาวถัวเฉลี่ยแบบถ่วงด้วยจำนวนรีวิว ÷ 5 โดยผสม "ดาวกลาง 2.5" เข้าไปเทียบเท่ารีวิวสมมติ 3 รีวิว
 //	               ตัวละครที่ยังไม่มีรีวิวจึงได้ 2.5 (กลางๆ) ไม่ถูกหักเป็น 0.0 ดาวทั้งที่แค่ยังไม่มีคนรีวิว
@@ -226,81 +224,6 @@ const popularityOrderClause = `(
 	0.5 * (((rating::float8 * review_count) + 2.5 * 3) / (review_count + 3)) / 5.0
 	+ 0.5 * (usage_count::float8 / GREATEST((SELECT MAX(usage_count) FROM characters WHERE is_shared = true), 1))
 ) DESC, usage_count DESC, character_id ASC`
-
-// deleteCharacterCascade ลบตัวละครพร้อมข้อมูลที่ผูกอยู่ ใน transaction เดียว
-//   - ownerID != 0 : ลบได้เฉพาะตัวละครที่เป็นของ ownerID นั้น (ผู้ใช้ทั่วไป)
-//   - ownerID == 0 : ลบได้ทุกตัว (แอดมิน)
-//
-// คืนจำนวนแถวตัวละครที่ถูกลบ (0 = ไม่พบ หรือไม่ใช่เจ้าของ)
-//
-// ค้นหาตารางที่มี foreign key ชี้มาที่ characters แบบ NO ACTION/RESTRICT จาก catalog ของ
-// PostgreSQL แล้วลบแถวที่ผูกกันก่อน ทำให้ลบได้แม้ฐานข้อมูลจริงไม่ได้ตั้ง ON DELETE CASCADE
-// (ตารางที่ตั้ง CASCADE / SET NULL ไว้แล้ว ฐานข้อมูลจัดการเอง)
-func deleteCharacterCascade(db *sql.DB, characterID, ownerID int64) (int64, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	if ownerID != 0 {
-		var owned bool
-		if err := tx.QueryRow(
-			`SELECT EXISTS(SELECT 1 FROM characters WHERE character_id = $1 AND user_id = $2)`,
-			characterID, ownerID,
-		).Scan(&owned); err != nil {
-			log.Printf("delete character %d: ตรวจเจ้าของไม่สำเร็จ: %v", characterID, err)
-			return 0, err
-		}
-		if !owned {
-			return 0, nil
-		}
-	}
-
-	rows, err := tx.Query(
-		`SELECT c.conrelid::regclass::text, quote_ident(a.attname)
-		 FROM pg_constraint c
-		 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
-		 WHERE c.contype = 'f'
-		   AND c.confrelid = 'public.characters'::regclass
-		   AND c.confdeltype IN ('a', 'r')`,
-	)
-	if err != nil {
-		log.Printf("delete character %d: อ่าน foreign key ไม่สำเร็จ: %v", characterID, err)
-		return 0, err
-	}
-	type dependent struct{ table, column string }
-	var dependents []dependent
-	for rows.Next() {
-		var d dependent
-		if err := rows.Scan(&d.table, &d.column); err != nil {
-			rows.Close()
-			return 0, err
-		}
-		dependents = append(dependents, d)
-	}
-	rows.Close()
-
-	for _, d := range dependents {
-		// ชื่อตารางและคอลัมน์มาจาก catalog (ผ่าน regclass / quote_ident) ไม่ได้มาจากผู้ใช้
-		if _, err := tx.Exec(`DELETE FROM `+d.table+` WHERE `+d.column+` = $1`, characterID); err != nil {
-			log.Printf("delete character %d: ลบจากตาราง %s ไม่สำเร็จ: %v", characterID, d.table, err)
-			return 0, err
-		}
-	}
-
-	result, err := tx.Exec(`DELETE FROM characters WHERE character_id = $1`, characterID)
-	if err != nil {
-		log.Printf("delete character %d: %v", characterID, err)
-		return 0, err
-	}
-	affected, _ := result.RowsAffected()
-
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-	return affected, nil
-}
 
 // ----- List Public (ค้นหาตัวละครสาธารณะของทุกคน ไม่ต้องล็อกอิน) -----
 

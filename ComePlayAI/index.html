@@ -1362,6 +1362,38 @@
             });
         }
 
+        // คะแนนยอดนิยมรวม (สเกล 0-5) = ดาวรีวิวที่ถ่วงน้ำหนักด้วยจำนวนรีวิว + ยอดคุย (เทียบกับตัวที่คุยมากสุด) อย่างละครึ่ง
+        // ปกติใช้ค่าที่เซิร์ฟเวอร์คำนวณมาให้ (popularity_score) ถ้าเซิร์ฟเวอร์ยังเป็นเวอร์ชันเก่าที่ไม่ส่งค่านี้ ให้คำนวณสูตรเดียวกันเองจากข้อมูลในลิสต์
+        function getPopularityScore(char, maxUsage) {
+            if (char.popularity_score !== undefined && char.popularity_score !== null && Number.isFinite(Number(char.popularity_score))) {
+                return Math.min(5, Math.max(0, Number(char.popularity_score)));
+            }
+            const rating = Number(char.rating) || 0;
+            const reviews = Number(char.review_count) || 0;
+            const usage = Number(char.usage_count) || 0;
+            const smoothed = (rating * reviews + 2.5 * 3) / (reviews + 3);
+            return Math.min(5, 0.5 * smoothed + 2.5 * (usage / Math.max(maxUsage, 1)));
+        }
+
+        // วาดดาว 5 ดวง ปัดเป็นทีละครึ่งดาว เช่น 2.5 คะแนน = ดาวเต็ม 2 ดวง + ครึ่งดวง + ดาวว่าง 2 ดวง
+        function rankStarsHTML(score) {
+            const halves = Math.round(score * 2);
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                if (halves >= i * 2) html += '<i class="fa-solid fa-star"></i>';
+                else if (halves === i * 2 - 1) html += '<i class="fa-solid fa-star-half-stroke"></i>';
+                else html += '<i class="fa-regular fa-star opacity-50"></i>';
+            }
+            return html;
+        }
+
+        // ช่องแสดงคะแนนยอดนิยมในหน้าอันดับ (ใช้ร่วมกันทั้งหน้าอันดับของผู้ใช้และของผู้เยี่ยมชม)
+        function rankScoreBlockHTML(char, maxUsage) {
+            const score = getPopularityScore(char, maxUsage);
+            const tip = 'รีวิวเฉลี่ย ' + (Number(char.rating) || 0).toFixed(1) + ' ดาว (' + (Number(char.review_count) || 0) + ' รีวิว) · คุยแล้ว ' + (Number(char.usage_count) || 0) + ' ครั้ง';
+            return `<div class="text-right" title="${tip}"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนนยอดนิยม</p><p class="font-black text-lg text-pink-500 flex items-center justify-end gap-0.5">${rankStarsHTML(score)}<span class="ml-2 text-base">${score.toFixed(1)}</span></p></div>`;
+        }
+
         async function loadRankingList() {
             try {
                 await ensureFavoritesLoaded();
@@ -1370,6 +1402,7 @@
                 list.innerHTML = '';
                 document.getElementById('ranking-empty').classList.toggle('hidden', characters.length > 0);
                 const medalColors = ['text-yellow-400', 'text-slate-300', 'text-amber-600'];
+                const rankMaxUsage = Math.max(0, ...characters.map(ch => Number(ch.usage_count) || 0));
                 characters.forEach((char, index) => {
                     const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                     const safeName = char.name.replace(/'/g, "\\'");
@@ -1392,7 +1425,7 @@
                         </div>
                         <div class="flex items-center space-x-4 shrink-0">
                             <button type="button" class="favorite-btn w-10 h-10 rounded-full bg-slate-50 hover:scale-110 flex items-center justify-center transition ${isFav ? 'text-red-500' : 'text-slate-400'}" data-character-id="${char.character_id}" title="ถูกใจ"><i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i></button>
-                            <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
+                            ${rankScoreBlockHTML(char, rankMaxUsage)}
                             <button type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition" data-chat-btn>แชท</button>
                         </div>`;
                     li.querySelector('[data-chat-btn]').addEventListener('click', () => enterChatRoom(char.character_id, safeName, avatarUrl, mediaType));
@@ -2228,6 +2261,7 @@
                 list.innerHTML = '';
                 document.getElementById('guest-ranking-empty').classList.toggle('hidden', characters.length > 0);
                 const medalColors = ['text-yellow-400', 'text-slate-300', 'text-amber-600'];
+                const rankMaxUsage = Math.max(0, ...characters.map(ch => Number(ch.usage_count) || 0));
                 characters.forEach((char, index) => {
                     const avatarUrl = resolveMediaUrl(char.avatar_url) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.name)}`;
                     const medalColor = medalColors[index] || 'text-slate-200';
@@ -2240,7 +2274,7 @@
                             <div class="min-w-0"><h4 class="font-bold text-xl text-slate-800 truncate">${char.name}</h4></div>
                         </div>
                         <div class="flex items-center space-x-6 shrink-0">
-                            <div class="text-right"><p class="text-xs text-slate-400 font-bold uppercase mb-1">คะแนน / ใช้งาน</p><p class="font-black text-xl text-pink-500 flex items-center justify-end"><i class="fa-solid fa-star mr-2"></i> ${Number(char.rating).toFixed(1)} · ${char.usage_count}</p></div>
+                            ${rankScoreBlockHTML(char, rankMaxUsage)}
                             <button type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition" data-chat-btn>แชท</button>
                         </div>`;
                     li.querySelector('[data-chat-btn]').addEventListener('click', (e) => { e.stopPropagation(); promptGuestLogin(); });
