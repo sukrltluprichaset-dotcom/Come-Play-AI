@@ -387,12 +387,12 @@
                 </div>
                 <nav id="main-nav" class="p-4 space-y-2 overflow-y-auto flex-1">
                     <button onclick="showView('dashboard-view', 'nav-home')" id="nav-home" class="w-full flex items-center space-x-3 px-4 py-3 bg-indigo-800 rounded-lg text-white font-medium shadow-inner transition"><i class="fa-solid fa-house w-5 text-center"></i><span>หน้าหลัก</span></button>
+                    <button onclick="showView('help-view', 'nav-help')" id="nav-help" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-circle-question w-5 text-center"></i><span>วิธีใช้งาน</span></button>
                     <button onclick="openCreateCharMode()" id="nav-create" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-user-pen w-5 text-center"></i><span>สร้างตัวละคร</span></button>
                     <button onclick="showView('studio-view', 'nav-studio')" id="nav-studio" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-chart-bar w-5 text-center"></i><span>สถิติตัวละครของฉัน</span></button>
                     <button onclick="showView('ranking-view', 'nav-ranking')" id="nav-ranking" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-trophy w-5 text-center"></i><span>อันดับยอดนิยม</span></button>
                     <button onclick="showView('diary-view', 'nav-diary')" id="nav-diary" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-book-journal-whills w-5 text-center"></i><span>บันทึกประจำวัน</span></button>
                     <button onclick="showView('history-view', 'nav-history')" id="nav-history" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i><span>ประวัติทำรายการ</span></button>
-                    <button onclick="showView('help-view', 'nav-help')" id="nav-help" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-indigo-200 hover:bg-indigo-800 transition font-medium mt-2"><i class="fa-solid fa-circle-question w-5 text-center"></i><span>วิธีใช้งาน</span></button>
                 </nav>
             </div>
             <div class="p-4 border-t border-indigo-800 bg-indigo-950">
@@ -1283,7 +1283,7 @@
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer char-card flex flex-col animate-fade-in" data-name="${char.name}" data-character-id="${char.character_id}" onclick="enterChatRoom(${char.character_id}, '${safeName}', '${avatarUrl}', '${mediaType}')">
                             <div class="h-40 bg-emerald-100 relative overflow-hidden">
                                 ${mediaTagHTML}
-                                ${char.is_shared ? `<div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-emerald-600 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>` : ''}
+                                ${char.is_shared ? `<div title="ค่าเฉลี่ยดาวรีวิว (ไม่ใช่คะแนนยอดนิยม)" class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-emerald-600 flex items-center shadow-sm"><span class="mr-1 font-medium">รีวิว</span><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>` : ''}
                             </div>
                             <div class="p-4 flex flex-col flex-1">
                                 <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
@@ -1348,7 +1348,7 @@
                         <div class="h-40 bg-indigo-100 relative overflow-hidden">
                             ${mediaTagHTML}
                             <button onclick="event.stopPropagation(); toggleFavorite(${char.character_id}, this)" class="favorite-btn absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm transition hover:scale-110 ${isFav ? 'text-red-500' : 'text-slate-400'}" data-character-id="${char.character_id}" title="ถูกใจ"><i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i></button>
-                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                            <div title="ค่าเฉลี่ยดาวรีวิว (ไม่ใช่คะแนนยอดนิยม)" class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><span class="mr-1 font-medium">รีวิว</span><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
                         </div>
                         <div class="p-4 flex flex-col flex-1">
                             <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
@@ -1508,7 +1508,7 @@
                             <div class="h-40 bg-pink-100 relative overflow-hidden">
                                 ${mediaTagHTML}
                                 <button onclick="event.stopPropagation(); toggleFavorite(${char.character_id}, this)" class="favorite-btn absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm transition hover:scale-110 text-red-500" data-character-id="${char.character_id}" title="เลิกถูกใจ"><i class="fa-solid fa-heart"></i></button>
-                                <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                                <div title="ค่าเฉลี่ยดาวรีวิว (ไม่ใช่คะแนนยอดนิยม)" class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><span class="mr-1 font-medium">รีวิว</span><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
                             </div>
                             <div class="p-4 flex flex-col flex-1">
                                 <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
@@ -2239,7 +2239,7 @@
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition group cursor-pointer flex flex-col animate-fade-in" onclick="promptGuestLogin()">
                         <div class="h-40 bg-indigo-100 relative overflow-hidden">
                             ${mediaTagHTML}
-                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
+                            <div title="ค่าเฉลี่ยดาวรีวิว (ไม่ใช่คะแนนยอดนิยม)" class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-amber-500 flex items-center shadow-sm"><span class="mr-1 font-medium">รีวิว</span><i class="fa-solid fa-star mr-1"></i> ${Number(char.rating).toFixed(1)}</div>
                         </div>
                         <div class="p-4 flex flex-col flex-1">
                             <h4 class="font-bold text-lg text-slate-800">${char.name}</h4>
