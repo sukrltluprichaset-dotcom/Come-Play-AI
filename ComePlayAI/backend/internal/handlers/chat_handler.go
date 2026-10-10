@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -90,16 +91,14 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusForbidden, "ไม่มีสิทธิ์คุยกับตัวละครนี้")
 	}
 
-	var currentBalance int
-	if err := h.DB.QueryRow(`SELECT balance FROM coins WHERE user_id = $1`, userID).Scan(&currentBalance); err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
-	}
-	if currentBalance < chatCost {
-		return writeError(c, fiber.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
-	}
+	// จับเวลาแต่ละขั้นไว้พิมพ์ลง log (ดูใน Render > Logs ได้ว่าช้าที่ขั้นไหน)
+	tStart := time.Now()
 
-	// เริ่มแปลงข้อความผู้ใช้เป็นเวกเตอร์ (เรียก Gemini Embedding) "ขนานไปกับ" การดึงประวัติแชทและบทบาทผู้ใช้จาก DB
-	// ด้านล่าง เดิมทำต่อกันทีละขั้น ทำให้เวลารวม = เวลา DB + เวลา Embedding ตอนนี้ใช้เวลาเท่าขั้นที่นานกว่าอย่างเดียว
+	// ขั้นเตรียมข้อมูลทั้งหมดด้านล่างไม่ขึ้นต่อกัน จึงยิงพร้อมกันหมด (เดิมทำต่อกันทีละขั้น ทุกขั้นที่ต่อ
+	// ฐานข้อมูลบนคลาวด์เสียเวลาไปกลับขั้นละหลายร้อยมิลลิวินาที รวมกันแล้วช้ามาก):
+	//   1) แปลงข้อความผู้ใช้เป็นเวกเตอร์ (Gemini Embedding)
+	//   2) เช็กยอดเหรียญ  3) ดึง 20 ข้อความล่าสุด  4) ดึงบทบาทผู้ใช้  5) ดึงข้อความเก่าที่มีเวกเตอร์ไว้ค้นความจำ
+	// ข้อ 5 ดึงรอไว้ก่อนเลย พอได้เวกเตอร์จากข้อ 1 ค่อยเอามาคำนวณความคล้าย ไม่ต้องรอ DB อีกรอบ
 	type embedResult struct {
 		vec []float64
 		err error
@@ -110,54 +109,98 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 		embedCh <- embedResult{vec: v, err: e}
 	}()
 
-	// ----- ดึงความจำระยะสั้น: 20 ข้อความล่าสุดในห้องนี้ -----
-	// เดิมดึงมาแค่ sender_type, message ไม่มีเวลาที่พิมพ์กำกับไปด้วยเลย ทำให้ AI ไม่รู้เลยว่าแต่ละข้อความ
-	// ในประวัติห่างจากตอนนี้นานแค่ไหน (ฟีดแบ็กผู้ใช้จริง: บางทีเอาเรื่องที่คุยเมื่อวานมาพูดถึงกับ AI วันนี้
-	// แต่ AI ตอบราวกับเพิ่งเกิดขึ้นเมื่อกี้ ทั้งที่จริงผ่านไปเป็นวันแล้ว) เพิ่ม send_time เข้ามาด้วยเพื่อ
-	// พิมพ์กำกับวันที่/เวลาไว้หน้าแต่ละข้อความในประวัติ ให้โมเดลใช้เทียบกับเวลาปัจจุบันเองได้
-	// เจอบั๊กจากการทดสอบจริง: ข้อความของผู้ใช้กับคำตอบของ AI ที่ insert ในทรานแซกชันเดียวกัน (ดูจุด insert
-	// ด้านล่าง) จะได้ค่า send_time เท่ากันเป๊ะเสมอ (Postgres: now()/CURRENT_TIMESTAMP คืนเวลาเริ่มทรานแซกชัน
-	// เดียวกันตลอดทั้งทรานแซกชัน ไม่ใช่เวลา ณ ตอน insert แต่ละคำสั่งจริง ๆ) พอเวลาเท่ากันเป๊ะ ORDER BY
-	// send_time เพียงอย่างเดียวจึงเรียงลำดับไม่แน่นอน (Postgres สุ่มลำดับแถวที่ค่าเท่ากันได้) บางทีเลยได้
-	// คำตอบ AI โผล่มาก่อนข้อความของผู้ใช้ที่ถามจริง ๆ เพิ่ม chat_id (auto-increment ตามลำดับ insert จริง)
-	// เป็นตัวตัดสินลำดับรอง ให้เรียงถูกต้องเสมอแม้ send_time จะชนกัน
-	historyRows, err := h.DB.Query(
-		`SELECT sender_type, message, send_time FROM (
-			SELECT sender_type, message, send_time, chat_id FROM chats
-			WHERE user_id = $1 AND character_id = $2
-			ORDER BY send_time DESC, chat_id DESC LIMIT 20
-		) recent ORDER BY send_time ASC, chat_id ASC`,
-		userID, characterID,
+	type oldMsg struct {
+		Message   string
+		Embedding []float64
+	}
+	var (
+		currentBalance                  int
+		balErr                          error
+		history                         []llm.ChatTurn
+		histErr                         error
+		personaName, personaDescription string
+		personaErr                      error
+		candidates                      []oldMsg
 	)
-	if err != nil {
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		balErr = h.DB.QueryRow(`SELECT balance FROM coins WHERE user_id = $1`, userID).Scan(&currentBalance)
+	}()
+	go func() {
+		defer wg.Done()
+		// ความจำระยะสั้น: 20 ข้อความล่าสุดในห้องนี้ พร้อมเวลาที่พิมพ์ (ให้ AI รู้ว่าแต่ละข้อความห่างจากตอนนี้นานแค่ไหน)
+		// เรียงด้วย send_time แล้วตามด้วย chat_id เพราะข้อความผู้ใช้กับคำตอบ AI ที่ insert ในทรานแซกชันเดียวกัน
+		// ได้ send_time เท่ากันเป๊ะ ต้องใช้ chat_id ตัดสินลำดับรอง
+		rows, err := h.DB.Query(
+			`SELECT sender_type, message, send_time FROM (
+				SELECT sender_type, message, send_time, chat_id FROM chats
+				WHERE user_id = $1 AND character_id = $2
+				ORDER BY send_time DESC, chat_id DESC LIMIT 20
+			) recent ORDER BY send_time ASC, chat_id ASC`,
+			userID, characterID,
+		)
+		if err != nil {
+			histErr = err
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var senderType, message string
+			var sendTime time.Time
+			if err := rows.Scan(&senderType, &message, &sendTime); err != nil {
+				histErr = err
+				return
+			}
+			role := "user"
+			if senderType == "ai" {
+				role = "model"
+			}
+			timestampedMessage := fmt.Sprintf("[%s] %s", sendTime.In(bangkokTZ).Format("02/01/2006 15:04"), message)
+			history = append(history, llm.ChatTurn{Role: role, Text: timestampedMessage})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		// บทบาท/สถานการณ์ที่ผู้ใช้ตั้งไว้ (ใช้ได้ทีละ 1 บทบาท) ถ้าไม่มีก็ข้ามไป
+		personaErr = h.DB.QueryRow(
+			`SELECT name, description FROM user_personas WHERE user_id = $1 AND is_active = true LIMIT 1`,
+			userID,
+		).Scan(&personaName, &personaDescription)
+	}()
+	go func() {
+		defer wg.Done()
+		rows, err := h.DB.Query(
+			`SELECT message, embedding FROM chats
+			 WHERE user_id = $1 AND character_id = $2 AND embedding IS NOT NULL
+			 ORDER BY send_time DESC, chat_id DESC OFFSET 20 LIMIT 120`,
+			userID, characterID,
+		)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var m oldMsg
+			if err := rows.Scan(&m.Message, pq.Array(&m.Embedding)); err == nil {
+				candidates = append(candidates, m)
+			}
+		}
+	}()
+	wg.Wait()
+	tDB := time.Since(tStart)
+
+	if balErr != nil {
+		return writeError(c, fiber.StatusInternalServerError, "เกิดข้อผิดพลาดในระบบ")
+	}
+	if currentBalance < chatCost {
+		return writeError(c, fiber.StatusPaymentRequired, "เหรียญไม่เพียงพอ กรุณาเติมเหรียญก่อนแชท")
+	}
+	if histErr != nil {
 		return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
 	}
-	var history []llm.ChatTurn
-	for historyRows.Next() {
-		var senderType, message string
-		var sendTime time.Time
-		if err := historyRows.Scan(&senderType, &message, &sendTime); err != nil {
-			historyRows.Close()
-			return writeError(c, fiber.StatusInternalServerError, "โหลดประวัติการสนทนาไม่สำเร็จ")
-		}
-		role := "user"
-		if senderType == "ai" {
-			role = "model"
-		}
-		timestampedMessage := fmt.Sprintf("[%s] %s", sendTime.In(bangkokTZ).Format("02/01/2006 15:04"), message)
-		history = append(history, llm.ChatTurn{Role: role, Text: timestampedMessage})
-	}
-	historyRows.Close()
 
-	// ----- บทบาท/สถานการณ์ของผู้ใช้ (persona) -----
-	// ผู้ใช้ตั้งค่าได้เองที่หน้า "บทบาท/สถานการณ์ของคุณ" ว่าตัวเองสวมบทบาทเป็นใครในการสนทนานี้ (เลือกใช้ได้
-	// ทีละ 1 บทบาท) ถ้ามีบทบาทที่กำลังใช้งานอยู่ ให้แทรกเป็นกฎเพิ่มเติมใน roleplayGuide ด้านล่าง เพื่อให้ AI
-	// ปฏิบัติกับผู้ใช้ตามบทบาทนั้น ถ้าไม่มี (ผู้ใช้ยังไม่เคยตั้ง หรือกดเลิกใช้ไว้) ก็ข้ามส่วนนี้ไปตามปกติ
-	var personaName, personaDescription string
-	personaErr := h.DB.QueryRow(
-		`SELECT name, description FROM user_personas WHERE user_id = $1 AND is_active = true LIMIT 1`,
-		userID,
-	).Scan(&personaName, &personaDescription)
 	personaSection := ""
 	if personaErr == nil {
 		personaSection = fmt.Sprintf("\n- ผู้ใช้ที่คุณกำลังคุยด้วยตอนนี้สวมบทบาทเป็น \"%s\" (%s) ให้คุณปฏิบัติและพูดคุยกับผู้ใช้ตามบทบาท/สถานการณ์นี้ตลอดการสนทนา", personaName, personaDescription)
@@ -195,60 +238,51 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 	// ----- RAG เฟส 2: ค้นหาความจำระยะยาวที่เกี่ยวข้อง (นอกเหนือจาก 20 ข้อความล่าสุด) -----
 	fullPersonality := roleplayGuide + personality
 
-	er := <-embedCh
+	// รอเวกเตอร์ได้ไม่เกิน 2 วินาที ถ้า Embedding ช้ากว่านั้นให้ข้ามการค้นความจำเก่ารอบนี้ไปก่อน
+	// (แชทยังตอบได้ปกติ) แล้วค่อยเก็บเวกเตอร์ของข้อความนี้ตามหลังเป็นงานเบื้องหลัง
+	var er embedResult
+	lateEmbed := false
+	select {
+	case er = <-embedCh:
+	case <-time.After(2 * time.Second):
+		lateEmbed = true
+		er = embedResult{err: errors.New("embedding ช้าเกิน 2 วินาที")}
+	}
 	userEmbedding, embedErr := er.vec, er.err
+	tEmbed := time.Since(tStart)
 	if embedErr != nil {
 		log.Printf("Embedding error (ข้ามการค้นหาความจำระยะยาวรอบนี้): %v", embedErr)
 	} else {
-		type oldMsg struct {
-			Message   string
-			Embedding []float64
+		type scored struct {
+			Message string
+			Score   float64
 		}
-		oldRows, err := h.DB.Query(
-			`SELECT message, embedding FROM chats
-			 WHERE user_id = $1 AND character_id = $2 AND embedding IS NOT NULL
-			 ORDER BY send_time DESC, chat_id DESC OFFSET 20 LIMIT 120`,
-			userID, characterID,
-		)
-		if err == nil {
-			var candidates []oldMsg
-			for oldRows.Next() {
-				var m oldMsg
-				if err := oldRows.Scan(&m.Message, pq.Array(&m.Embedding)); err == nil {
-					candidates = append(candidates, m)
-				}
+		var scoredList []scored
+		for _, cand := range candidates {
+			score := cosineSimilarity(userEmbedding, cand.Embedding)
+			if score > 0.75 {
+				scoredList = append(scoredList, scored{Message: cand.Message, Score: score})
 			}
-			oldRows.Close()
+		}
+		sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].Score > scoredList[j].Score })
 
-			type scored struct {
-				Message string
-				Score   float64
+		if len(scoredList) > 0 {
+			limit := 5
+			if len(scoredList) < limit {
+				limit = len(scoredList)
 			}
-			var scoredList []scored
-			for _, cand := range candidates {
-				score := cosineSimilarity(userEmbedding, cand.Embedding)
-				if score > 0.75 {
-					scoredList = append(scoredList, scored{Message: cand.Message, Score: score})
-				}
+			var sb strings.Builder
+			sb.WriteString("\n\n[ความทรงจำเก่าที่เกี่ยวข้องกับสิ่งที่ผู้ใช้เพิ่งพูดถึง]\n")
+			for _, s := range scoredList[:limit] {
+				sb.WriteString("- " + s.Message + "\n")
 			}
-			sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].Score > scoredList[j].Score })
-
-			if len(scoredList) > 0 {
-				limit := 5
-				if len(scoredList) < limit {
-					limit = len(scoredList)
-				}
-				var sb strings.Builder
-				sb.WriteString("\n\n[ความทรงจำเก่าที่เกี่ยวข้องกับสิ่งที่ผู้ใช้เพิ่งพูดถึง]\n")
-				for _, s := range scoredList[:limit] {
-					sb.WriteString("- " + s.Message + "\n")
-				}
-				fullPersonality += sb.String()
-			}
+			fullPersonality += sb.String()
 		}
 	}
 
+	tGen := time.Now()
 	aiReply, err := h.Gemini.GenerateReply(fullPersonality, history, req.Message)
+	genDur := time.Since(tGen)
 	if err != nil {
 		log.Printf("Gemini API error: %v", err)
 		// เดิมพอ Gemini ปฏิเสธเพราะตัวกรองความปลอดภัย (เช่นข้อความมีคำหยาบ) จะโชว์ข้อความ
@@ -305,6 +339,23 @@ func (h *ChatHandler) SendMessage(c *fiber.Ctx) error {
 
 	if err := tx.Commit(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "ส่งข้อความไม่สำเร็จ")
+	}
+
+	log.Printf("เวลาแชท: ดึงข้อมูล=%v | รอ embedding=%v | Gemini=%v | รวม=%v", tDB, tEmbed, genDur, time.Since(tStart))
+
+	// ถ้ารอ embedding ไม่ทันตอนบันทึก ให้รอให้เสร็จเบื้องหลังแล้วเติมเวกเตอร์ของข้อความผู้ใช้ภายหลัง
+	if lateEmbed {
+		userChatID := userChat.ChatID
+		go func() {
+			r := <-embedCh
+			if r.err != nil {
+				log.Printf("Embedding error (ข้อความผู้ใช้ ทำตามหลัง): %v", r.err)
+				return
+			}
+			if _, err := h.DB.Exec(`UPDATE chats SET embedding = $1 WHERE chat_id = $2`, pq.Array(r.vec), userChatID); err != nil {
+				log.Printf("บันทึก embedding ข้อความผู้ใช้ไม่สำเร็จ: %v", err)
+			}
+		}()
 	}
 
 	// แปลงคำตอบ AI เป็นเวกเตอร์เก็บไว้ค้นความจำระยะยาวในรอบถัดไป ทำ "หลังตอบผู้ใช้แล้ว" เป็นงานเบื้องหลัง
